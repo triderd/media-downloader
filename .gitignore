@@ -1,0 +1,13 @@
+build/
+bin/
+*.o
+*.a
+*.so
+*.out
+media_downloader
+compile_commands.json
+
+.vscode/
+.idea/
+
+downloads/
