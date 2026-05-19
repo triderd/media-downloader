@@ -1,3 +1,6 @@
+
+#include <nlohmann/json.hpp>
+
 #include "pixiv_extractor.hpp"
 
 #include <curl/curl.h>
@@ -6,6 +9,9 @@
 #include <regex>
 #include <set>
 
+
+using json =
+    nlohmann::json;
 
 static size_t write_callback(
     void* ptr,
@@ -205,86 +211,82 @@ PixivExtractor::extract(
         << api_url
         << "\n";
 
-    std::string json =
+    std::string json_data =
         http_get(api_url);
 
-    if (json.empty())
+    if (json_data.empty())
     {
         return {};
     }
 
-    std::regex pattern(
-        R"DELIM("original":"(https:\\/\\/i\.pximg\.net[^"]+)")DELIM"
-    );
 
-    std::sregex_iterator begin(
-        json.begin(),
-        json.end(),
-        pattern
-    );
-
-    std::sregex_iterator end;
-
-    std::vector<DownloadTask> tasks;
-
-    for (
-        auto it = begin;
-        it != end;
-        ++it
-    )
+    json parsed;
+    
+    try
     {
-        std::string escaped =
-            (*it)[1];
-
-        std::string fixed;
-
-        for (
-            size_t i = 0;
-            i < escaped.size();
-            ++i
+        parsed =
+            json::parse(
+                json_data
+            );
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr
+            << "JSON parse error: "
+            << e.what()
+            << "\n";
+    
+        return {};
+    }
+    
+    std::vector<DownloadTask> tasks;
+    
+    if (!parsed.contains("body"))
+    {
+        return {};
+    }
+    
+    for (const auto& page : parsed["body"])
+    {
+        if (
+            !page.contains("urls")
+            ||
+            !page["urls"].contains("original")
         )
         {
-            if (
-                i + 1 < escaped.size() &&
-                escaped[i] == '\\' &&
-                escaped[i + 1] == '/'
-            )
-            {
-                fixed += '/';
-                ++i;
-            }
-            else
-            {
-                fixed += escaped[i];
-            }
+            continue;
         }
-
+    
+        std::string original_url =
+            page["urls"]["original"];
+    
         DownloadTask task;
-
-        task.url = fixed;
-
+    
+        task.url = original_url;
+    
         task.headers =
         {
             "Referer: https://www.pixiv.net/"
         };
-
+    
         task.cookies =
-            "PHPSESSID=113246217_AYi4n9iGcpKKTlMcy9nCp9v25pQS7HNr";
-
-
+            "PHPSESSID=PUT_YOUR_SESSION_HERE";
+    
         size_t last_slash =
-            fixed.find_last_of('/');
-
+            original_url.find_last_of('/');
+    
         if (last_slash != std::string::npos)
         {
             task.filename =
-                fixed.substr(
+                original_url.substr(
                     last_slash + 1
                 );
         }
-
+    
         tasks.push_back(task);
     }
+
+
 
     std::cout
         << "Pixiv tasks: "
