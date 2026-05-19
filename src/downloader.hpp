@@ -1,5 +1,8 @@
 #pragma once
 
+#include "http_response.hpp"
+
+
 #include <vector>
 #include <curl/curl.h>
 #include <chrono>
@@ -40,6 +43,12 @@ public:
 
 
 private:
+
+
+    bool is_media_content_type(
+        const std::string& content_type
+    );
+
 
     static std::chrono::steady_clock::time_point
     last_progress_update;

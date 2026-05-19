@@ -551,6 +551,31 @@ bool Downloader::download(
     {
     std::cout<< "Content-Type: "<< content_type<< "\n";
     }
+
+
+    if (
+        content_type &&
+        !is_media_content_type(
+            content_type
+        )
+    )
+    {
+        std::cerr
+            << "Invalid content type: "
+            << content_type
+            << "\n";
+    
+        fclose(file);
+    
+        std::remove(
+            final_filename.c_str()
+        );
+    
+        curl_easy_cleanup(curl);
+    
+        return false;
+    }
+
     
 
     if (content_type)
@@ -660,4 +685,19 @@ std::string Downloader::sanitize_filename(
     }
 
     return safe;
+}
+
+
+bool Downloader::is_media_content_type(
+    const std::string& content_type
+)
+{
+    return
+        content_type.starts_with("image/")
+        ||
+        content_type.starts_with("video/")
+        ||
+        content_type.starts_with("audio/")
+        ||
+        content_type == "application/octet-stream";
 }
