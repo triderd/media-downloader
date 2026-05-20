@@ -1,7 +1,9 @@
 #include "extractor_manager.hpp"
-
 #include "generic_extractor.hpp"
+
+
 #include "sites/pixiv_extractor.hpp"
+#include "sites/youtube_extractor.hpp"
 
 #include <iostream>
 
@@ -13,6 +15,12 @@ ExtractorManager::ExtractorManager()
     extractors.push_back(
         std::make_unique<
             PixivExtractor
+        >()
+    );
+
+    extractors.push_back(
+        std::make_unique<
+            YouTubeExtractor
         >()
     );
 

@@ -91,6 +91,22 @@ PixivExtractor::http_get(
         url.c_str()
     );
 
+
+    curl_easy_setopt(
+        curl,
+        CURLOPT_COOKIE,
+        "PHPSESSID=113246217_AYi4n9iGcpKKTlMcy9nCp9v25pQS7HNr"
+    );
+
+
+    curl_easy_setopt(
+        curl,
+        CURLOPT_REFERER,
+        "https://www.pixiv.net/"
+    );
+
+
+
     curl_easy_setopt(
         curl,
         CURLOPT_WRITEFUNCTION,
@@ -166,6 +182,8 @@ PixivExtractor::http_get(
     std::cout
         << "Pixiv API response received\n";
 
+
+
     
     curl_slist_free_all(
         headers
@@ -220,6 +238,11 @@ PixivExtractor::extract(
     }
 
 
+    std::cout
+        << json_data
+        << "\n";
+
+
     json parsed;
     
     try
@@ -270,7 +293,7 @@ PixivExtractor::extract(
         };
     
         task.cookies =
-            "PHPSESSID=PUT_YOUR_SESSION_HERE";
+            "PHPSESSID=113246217_AYi4n9iGcpKKTlMcy9nCp9v25pQS7HNr";
     
         size_t last_slash =
             original_url.find_last_of('/');

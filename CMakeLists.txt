@@ -9,6 +9,8 @@ add_executable(
     
 
     src/extractors/sites/pixiv_extractor.cpp
+    src/extractors/sites/youtube_extractor.cpp
+
 
     src/main.cpp
     src/downloader.cpp
