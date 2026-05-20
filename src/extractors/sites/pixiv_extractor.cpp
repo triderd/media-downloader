@@ -214,10 +214,217 @@ PixivExtractor::extract(
     std::string artwork_id =
         extract_artwork_id(url);
 
+
     if (artwork_id.empty())
     {
         return {};
     }
+
+
+    std::vector<DownloadTask> tasks;
+
+
+    std::string info_url =
+        "https://www.pixiv.net/ajax/illust/"
+        + artwork_id;
+    
+    std::string info_json =
+        http_get(info_url);
+
+    std::cout
+        << "Info JSON size: "
+        << info_json.size()
+        << "\n";
+
+
+    
+    if (info_json.empty())
+    {
+	std::cout
+            << "Info JSON empty\n";
+        return {};
+    }
+
+
+    json info_parsed;
+    
+    try
+    {
+        info_parsed =
+            json::parse(
+                info_json
+            );
+
+
+        std::cout
+            << "Info JSON parsed\n";
+
+
+    }
+    
+    catch (const std::exception& e)
+    {
+        std::cout
+            << "Info JSON parse failed: "
+            << e.what()
+            << "\n";
+    
+        return {};
+    }
+
+
+    bool is_ugoira = false;
+    
+    if (
+        info_parsed.contains("body")
+    )
+    {
+        const auto& body =
+            info_parsed["body"];
+    
+        if (
+            body.contains("illustType")
+        )
+        {
+            int illust_type =
+                body["illustType"];
+    
+            std::cout
+                << "Illust type: "
+                << illust_type
+                << "\n";
+    
+            if (illust_type == 2)
+            {
+                is_ugoira = true;
+            }
+        }
+    }
+
+
+    if (is_ugoira)
+    {
+        std::cout
+            << "UGOIRA DETECTED\n";
+    
+        std::string ugoira_url =
+            "https://www.pixiv.net/ajax/illust/"
+            + artwork_id +
+            "/ugoira_meta";
+    
+        std::cout
+            << "UGOIRA API: "
+            << ugoira_url
+            << "\n";
+    
+        std::string ugoira_json =
+            http_get(ugoira_url);
+
+
+
+    
+        if (ugoira_json.empty())
+        {
+            return {};
+        }
+ 
+
+    std::cout
+        << ugoira_json
+        << "\n";
+    
+    json ugoira_parsed;
+    
+    try
+    {
+        ugoira_parsed =
+            json::parse(
+                ugoira_json
+            );
+    }
+   
+
+    catch (const std::exception& e)
+    {
+        std::cout
+            << "UGOIRA parse failed: "
+            << e.what()
+            << "\n";
+    
+        return {};
+    }
+
+
+    std::cout
+        << "UGOIRA parsed\n";
+
+
+
+    if (
+        !ugoira_parsed.contains(
+            "body"
+        )
+    )
+    {
+        return {};
+    }
+    
+    const auto& body =
+        ugoira_parsed["body"];
+
+    std::cout
+        << body.dump(2)
+        << "\n";
+
+
+    
+    if (
+        !body.contains(
+            "originalSrc"
+        )
+    )
+    {
+        return {};
+    }
+    
+    std::string zip_url =
+        body["originalSrc"];
+    
+    std::cout
+        << "UGOIRA ZIP:\n"
+        << zip_url
+        << "\n";
+    
+    DownloadTask task;
+    
+    task.url =
+        zip_url;
+    
+    task.headers =
+    {
+        "Referer: https://www.pixiv.net/"
+    };
+    
+    task.cookies =
+        "PHPSESSID=113246217_AYi4n9iGcpKKTlMcy9nCp9v25pQS7HNr";
+    
+    task.filename =
+        artwork_id
+        +
+        "_ugoira.zip";
+    
+    tasks.push_back(task);
+    
+    std::cout
+        << "UGOIRA task created\n";
+    
+    return tasks;
+
+
+    }
+
+
+
 
     std::string api_url =
         "https://www.pixiv.net/ajax/illust/"
@@ -236,6 +443,7 @@ PixivExtractor::extract(
     {
         return {};
     }
+
 
 
     std::cout
@@ -262,7 +470,6 @@ PixivExtractor::extract(
         return {};
     }
     
-    std::vector<DownloadTask> tasks;
     
     if (!parsed.contains("body"))
     {

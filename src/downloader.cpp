@@ -699,5 +699,7 @@ bool Downloader::is_media_content_type(
         ||
         content_type.starts_with("audio/")
         ||
-        content_type == "application/octet-stream";
+        content_type == "application/octet-stream"
+        ||
+        content_type == "application/zip";
 }
