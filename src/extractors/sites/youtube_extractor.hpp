@@ -34,6 +34,12 @@ private:
         const std::string& url
     );
 
+    std::string http_post(
+        const std::string& url,
+        const std::string& body
+    );
+
+
     std::string extract_video_id(
         const std::string& url
     );

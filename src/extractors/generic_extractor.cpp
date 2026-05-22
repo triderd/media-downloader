@@ -107,6 +107,34 @@ GenericExtractor::find_media(
 {
     std::vector<std::string> media;
 
+
+    std::regex og_image_pattern(
+        R"DELIM(<meta[^>]+property="og:image"[^>]+content="([^"]+)")DELIM"
+    );
+    
+    std::smatch og_match;
+    
+    if (
+        std::regex_search(
+            html,
+            og_match,
+            og_image_pattern
+        )
+    )
+    {
+        media.push_back(
+            og_match[1]
+        );
+    
+        std::cout
+            << "OG image found\n";
+    
+        return media;
+    }
+
+
+
+
     std::vector<std::regex> patterns =
     {
         std::regex(
@@ -157,6 +185,17 @@ GenericExtractor::resolve_url(
     {
         return media_url;
     }
+
+
+    if (
+        media_url.starts_with("//")
+    )
+    {
+        return
+            "https:"
+            + media_url;
+    }
+
 
     size_t protocol_pos =
         page_url.find("://");

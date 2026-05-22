@@ -12,4 +12,6 @@ struct DownloadTask
     std::vector<std::string> headers;
 
     std::string cookies;
+
+    bool use_ytdlp = false;
 };

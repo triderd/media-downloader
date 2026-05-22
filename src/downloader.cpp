@@ -2,6 +2,8 @@
 
 #include <curl/curl.h>
 
+#include <chrono>
+#include <thread>
 #include <iomanip>
 #include <string>
 #include <cstdio>
@@ -311,6 +313,13 @@ bool Downloader::download(
 
     curl_easy_setopt(
         curl,
+        CURLOPT_IPRESOLVE,
+        CURL_IPRESOLVE_V4
+    );
+
+
+    curl_easy_setopt(
+        curl,
         CURLOPT_HTTP_VERSION,
         CURL_HTTP_VERSION_1_1
     );
@@ -324,8 +333,42 @@ bool Downloader::download(
     curl_easy_setopt(
         curl,
         CURLOPT_TIMEOUT,
+        0L
+    );
+
+
+    curl_easy_setopt(
+        curl,
+        CURLOPT_LOW_SPEED_LIMIT,
+        1L
+    );
+   
+    curl_easy_setopt(
+        curl,
+        CURLOPT_LOW_SPEED_TIME,
         60L
     );
+
+
+    curl_easy_setopt(
+        curl,
+        CURLOPT_ACCEPT_ENCODING,
+        ""
+    );
+
+
+    curl_easy_setopt(
+        curl,
+        CURLOPT_SSL_VERIFYPEER,
+        0L
+    );
+    
+    curl_easy_setopt(
+        curl,
+        CURLOPT_SSL_VERIFYHOST,
+        0L
+    );
+
     
     curl_easy_setopt(
         curl,
@@ -618,6 +661,80 @@ bool Downloader::download(
 
         return false;
     }
+
+
+    if (
+        final_filename.ends_with(
+            ".zip"
+        )
+    )
+    {
+        std::cout
+            << "Extracting ZIP...\n";
+    
+        std::string folder_name =
+            final_filename
+            + "_frames";
+    
+        std::string command =
+            "mkdir -p \""
+            + folder_name
+            + "\" && unzip -o \""
+            + final_filename
+            + "\" -d \""
+            + folder_name
+            + "\"";
+    
+        int result =
+            std::system(
+                command.c_str()
+            );
+    
+        std::cout
+            << "Unzip result: "
+            << result
+            << "\n";
+
+
+    if (result == 0)
+    {
+        std::cout
+            << "Converting to MP4...\n";
+    
+        std::string mp4_filename =
+            final_filename.substr(0, final_filename.length() - 4) + ".mp4";
+    
+        std::string ffmpeg_command =
+            "ffmpeg -y -framerate 30 "
+            "-i \""
+            + folder_name +
+            "/%06d.jpg\" "
+            "-c:v libx264 "
+            "-pix_fmt yuv420p "
+            "\""
+            + mp4_filename
+            + "\"";
+    
+        int ffmpeg_result =
+            std::system(
+                ffmpeg_command.c_str()
+            );
+    
+        std::cout
+            << "FFmpeg result: "
+            << ffmpeg_result
+            << "\n";
+    }
+
+
+
+    }
+
+
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(1000)
+    );
+
 
     return true;
 }
