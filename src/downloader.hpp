@@ -1,8 +1,5 @@
 #pragma once
 
-#include "http_response.hpp"
-
-
 #include <vector>
 #include <curl/curl.h>
 #include <chrono>
@@ -29,7 +26,10 @@ public:
         const std::string& url,
         const std::string& output_file,
         const std::vector<std::string>& headers = {},
-	const std::string& cookies = ""
+        const std::string& cookies = "",
+        const std::vector<int>& frame_delays = {},
+        int max_retries = 3,
+        bool show_progress = true
     );
 
      std::string extract_filename(
@@ -44,6 +44,16 @@ public:
 
 private:
 
+    bool download_attempt(
+        const std::string& url,
+        const std::string& output_file,
+        const std::vector<std::string>& headers,
+        const std::string& cookies
+    );
+
+    bool is_path_safe_for_shell(
+        const std::string& path
+    );
 
     bool is_media_content_type(
         const std::string& content_type
@@ -56,6 +66,8 @@ private:
 
     static std::chrono::steady_clock::time_point
     download_start_time;
+
+    static bool progress_enabled;
 
     static size_t write_data(
         void* ptr,

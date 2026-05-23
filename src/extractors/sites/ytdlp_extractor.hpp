@@ -1,9 +1,8 @@
 #pragma once
 
 #include "../base_extractor.hpp"
-#include "../../ytdlp_backend.hpp"
 
-class YouTubeExtractor
+class YtDlpExtractor
     : public BaseExtractor
 {
 public:
@@ -15,10 +14,4 @@ public:
     extract(
         const std::string& url
     ) override;
-
-private:
-    std::vector<std::string>
-    extract_playlist_urls(
-        const std::string& html
-    );
 };

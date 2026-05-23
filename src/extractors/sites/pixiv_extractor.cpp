@@ -8,30 +8,12 @@
 #include <iostream>
 #include <regex>
 #include <set>
-
+#include "../../http/http_client.hpp"
+#include "../../auth/cookie_manager.hpp"
 
 using json =
     nlohmann::json;
 
-static size_t write_callback(
-    void* ptr,
-    size_t size,
-    size_t nmemb,
-    void* userdata
-)
-{
-    std::string* data =
-        static_cast<std::string*>(
-            userdata
-        );
-
-    data->append(
-        static_cast<char*>(ptr),
-        size * nmemb
-    );
-
-    return size * nmemb;
-}
 
 
 bool PixivExtractor::matches(
@@ -75,130 +57,42 @@ PixivExtractor::http_get(
     const std::string& url
 )
 {
-    CURL* curl =
-        curl_easy_init();
+    HttpClient client;
 
-    if (!curl)
+    HttpRequest request;
+
+    request.url = url;
+
+    request.cookies =
+        CookieManager::load(
+            "pixiv"
+        );
+
+    request.referer =
+        "https://www.pixiv.net/";
+
+    request.headers =
     {
-        return "";
-    }
-
-    std::string html;
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_URL,
-        url.c_str()
-    );
-
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_COOKIE,
-        "PHPSESSID=113246217_AYi4n9iGcpKKTlMcy9nCp9v25pQS7HNr"
-    );
-
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_REFERER,
-        "https://www.pixiv.net/"
-    );
-
-
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_WRITEFUNCTION,
-        write_callback
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_WRITEDATA,
-        &html
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_FOLLOWLOCATION,
-        1L
-    );
-
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_TIMEOUT,
-        30L
-    );
-    
-    curl_easy_setopt(
-        curl,
-        CURLOPT_CONNECTTIMEOUT,
-        10L
-    );
-
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_HTTP_VERSION,
-        CURL_HTTP_VERSION_1_1
-    );
-
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_USERAGENT,
-        "Mozilla/5.0"
-    );
-
-
-    curl_slist* headers = nullptr;
-
-    headers = curl_slist_append(
-        headers,
         "Referer: https://www.pixiv.net/"
-    );
-    
-    headers = curl_slist_append(
-        headers,
-        "User-Agent: Mozilla/5.0"
-    );
-    
-    curl_easy_setopt(
-        curl,
-        CURLOPT_HTTPHEADER,
-        headers
-    );
+    };
 
+    HttpResponse response =
+        client.get(request);
 
-    std::cout
-        << "Sending Pixiv API request...\n";
-
-    CURLcode result =
-        curl_easy_perform(curl);
-
-
-    std::cout
-        << "Pixiv API response received\n";
-
-
-
-    
-    curl_slist_free_all(
-        headers
-    );
-
-    curl_easy_cleanup(curl);
-
-    if (result != CURLE_OK)
+    if (response.status_code >= 400)
     {
+        std::cerr
+            << "Pixiv API error: HTTP "
+            << response.status_code
+            << " for "
+            << url
+            << "\n";
+
         return "";
     }
 
-    return html;
+    return response.body;
 }
-
 
 
 
@@ -208,15 +102,15 @@ PixivExtractor::extract(
     const std::string& url
 )
 {
-    std::cout
-        << "Pixiv extraction...\n";
-
     std::string artwork_id =
         extract_artwork_id(url);
 
 
     if (artwork_id.empty())
     {
+        std::cerr
+            << "Could not extract artwork ID from URL\n";
+
         return {};
     }
 
@@ -231,44 +125,31 @@ PixivExtractor::extract(
     std::string info_json =
         http_get(info_url);
 
-    std::cout
-        << "Info JSON size: "
-        << info_json.size()
-        << "\n";
-
-
-    
     if (info_json.empty())
     {
-	std::cout
-            << "Info JSON empty\n";
+        std::cerr
+            << "Pixiv illust info: empty response\n";
+
         return {};
     }
 
-
     json info_parsed;
-    
+
     try
     {
         info_parsed =
             json::parse(
                 info_json
             );
-
-
-        std::cout
-            << "Info JSON parsed\n";
-
-
     }
-    
+
     catch (const std::exception& e)
     {
-        std::cout
-            << "Info JSON parse failed: "
+        std::cerr
+            << "Pixiv illust info parse error: "
             << e.what()
             << "\n";
-    
+
         return {};
     }
 
@@ -288,12 +169,7 @@ PixivExtractor::extract(
         {
             int illust_type =
                 body["illustType"];
-    
-            std::cout
-                << "Illust type: "
-                << illust_type
-                << "\n";
-    
+
             if (illust_type == 2)
             {
                 is_ugoira = true;
@@ -304,37 +180,24 @@ PixivExtractor::extract(
 
     if (is_ugoira)
     {
-        std::cout
-            << "UGOIRA DETECTED\n";
-    
         std::string ugoira_url =
             "https://www.pixiv.net/ajax/illust/"
             + artwork_id +
             "/ugoira_meta";
-    
-        std::cout
-            << "UGOIRA API: "
-            << ugoira_url
-            << "\n";
-    
+
         std::string ugoira_json =
             http_get(ugoira_url);
 
-
-
-    
         if (ugoira_json.empty())
         {
+            std::cerr
+                << "Failed to load ugoira metadata\n";
+
             return {};
         }
- 
 
-    std::cout
-        << ugoira_json
-        << "\n";
-    
     json ugoira_parsed;
-    
+
     try
     {
         ugoira_parsed =
@@ -342,23 +205,16 @@ PixivExtractor::extract(
                 ugoira_json
             );
     }
-   
 
     catch (const std::exception& e)
     {
-        std::cout
-            << "UGOIRA parse failed: "
+        std::cerr
+            << "Ugoira metadata parse error: "
             << e.what()
             << "\n";
-    
+
         return {};
     }
-
-
-    std::cout
-        << "UGOIRA parsed\n";
-
-
 
     if (
         !ugoira_parsed.contains(
@@ -366,58 +222,65 @@ PixivExtractor::extract(
         )
     )
     {
+        std::cerr
+            << "Ugoira metadata: missing 'body'\n";
+
         return {};
     }
-    
+
     const auto& body =
         ugoira_parsed["body"];
 
-    std::cout
-        << body.dump(2)
-        << "\n";
-
-
-    
     if (
         !body.contains(
             "originalSrc"
         )
     )
     {
+        std::cerr
+            << "Ugoira metadata: missing 'originalSrc'\n";
+
         return {};
     }
-    
+
     std::string zip_url =
         body["originalSrc"];
-    
-    std::cout
-        << "UGOIRA ZIP:\n"
-        << zip_url
-        << "\n";
-    
+
     DownloadTask task;
-    
+
     task.url =
         zip_url;
-    
+
     task.headers =
     {
         "Referer: https://www.pixiv.net/"
     };
-    
+
     task.cookies =
         "PHPSESSID=113246217_AYi4n9iGcpKKTlMcy9nCp9v25pQS7HNr";
-    
+
     task.filename =
         artwork_id
         +
         "_ugoira.zip";
-    
+
+    if (
+        body.contains("frames")
+    )
+    {
+        for (const auto& frame : body["frames"])
+        {
+            if (frame.contains("delay"))
+            {
+                task.frame_delays.push_back(
+                    frame["delay"]
+                );
+            }
+        }
+    }
+
     tasks.push_back(task);
-    
-    std::cout
-        << "UGOIRA task created\n";
-    
+
     return tasks;
 
 
@@ -431,24 +294,19 @@ PixivExtractor::extract(
         + artwork_id +
         "/pages";
 
-    std::cout
-        << "Pixiv API: "
-        << api_url
-        << "\n";
-
     std::string json_data =
         http_get(api_url);
 
     if (json_data.empty())
     {
+        std::cerr
+            << "Pixiv pages: empty response\n";
+
         return {};
     }
 
 
 
-    std::cout
-        << json_data
-        << "\n";
 
 
     json parsed;
@@ -463,10 +321,10 @@ PixivExtractor::extract(
     catch (const std::exception& e)
     {
         std::cerr
-            << "JSON parse error: "
+            << "Pixiv pages parse error: "
             << e.what()
             << "\n";
-    
+
         return {};
     }
     
@@ -515,13 +373,6 @@ PixivExtractor::extract(
     
         tasks.push_back(task);
     }
-
-
-
-    std::cout
-        << "Pixiv tasks: "
-        << tasks.size()
-        << "\n";
 
     return tasks;
 }

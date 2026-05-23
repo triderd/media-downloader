@@ -1,5 +1,4 @@
 build/
-bin/
 *.o
 *.a
 *.so
@@ -11,3 +10,16 @@ compile_commands.json
 .idea/
 
 downloads/
+roadmap.txt
+
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.mp4
+*.webm
+*.zip
+
+cookies/*.txt
+!cookies/.gitkeep

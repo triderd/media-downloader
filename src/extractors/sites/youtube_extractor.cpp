@@ -1,37 +1,67 @@
 #include "youtube_extractor.hpp"
 
-#include <curl/curl.h>
+#include <set>
 #include <sstream>
 #include <regex>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include "../../http/http_client.hpp"
 
 
 using json =
     nlohmann::json;
 
 
-static size_t write_callback(
-    void* ptr,
-    size_t size,
-    size_t nmemb,
-    void* userdata
+std::vector<std::string>
+YouTubeExtractor::extract_playlist_urls(
+    const std::string& html
 )
 {
-    std::string* data =
-        static_cast<std::string*>(
-            userdata
-        );
+    std::vector<std::string> urls;
 
-    size_t total =
-        size * nmemb;
-
-    data->append(
-        static_cast<char*>(ptr),
-        total
+    std::regex pattern(
+        "\"videoId\":\"([^\"]+)\""
     );
 
-    return total;
+    std::set<std::string> unique_ids;
+
+    std::sregex_iterator begin(
+        html.begin(),
+        html.end(),
+        pattern
+    );
+
+    std::sregex_iterator end;
+
+    for (
+        auto it = begin;
+        it != end;
+        ++it
+    )
+    {
+        std::string video_id =
+            (*it)[1];
+
+        if (
+            unique_ids.contains(
+                video_id
+            )
+        )
+        {
+            continue;
+        }
+
+        unique_ids.insert(
+            video_id
+        );
+
+        urls.push_back(
+            "https://www.youtube.com/watch?v="
+            + video_id
+        );
+    }
+
+    return urls;
 }
 
 
@@ -48,366 +78,302 @@ bool YouTubeExtractor::matches(
         != std::string::npos;
 }
 
-std::string
-YouTubeExtractor::extract_video_id(
-    const std::string& url
-)
-{
-    std::regex pattern(
-        R"([?&]v=([^&]+))"
-    );
-
-    std::smatch match;
-
-    if (
-        std::regex_search(
-            url,
-            match,
-            pattern
-        )
-    )
-    {
-        return match[1];
-    }
-
-    return "";
-}
-
-
-std::string
-YouTubeExtractor::http_get(
-    const std::string& url
-)
-{
-    CURL* curl =
-        curl_easy_init();
-
-    if (!curl)
-    {
-        return "";
-    }
-
-    std::string response;
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_URL,
-        url.c_str()
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_WRITEFUNCTION,
-        write_callback
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_WRITEDATA,
-        &response
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_FOLLOWLOCATION,
-        1L
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_TIMEOUT,
-        30L
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_USERAGENT,
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
-    );
-
-    struct curl_slist* headers = nullptr;
-    
-    headers = curl_slist_append(
-        headers,
-        "Accept-Language: en-US,en;q=0.9"
-    );
-    
-    headers = curl_slist_append(
-        headers,
-        "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-    );
-    
-    headers = curl_slist_append(
-        headers,
-        "Connection: keep-alive"
-    );
-    
-    headers = curl_slist_append(
-        headers,
-        "Upgrade-Insecure-Requests: 1"
-    );
-    
-    curl_easy_setopt(
-        curl,
-        CURLOPT_HTTPHEADER,
-        headers
-    );
-
-
-
-
-    CURLcode result =
-        curl_easy_perform(curl);
-
-    curl_slist_free_all(headers);
-
-
-    if (result != CURLE_OK)
-    {
-        curl_easy_cleanup(curl);
-
-        return "";
-    }
-
-    curl_easy_cleanup(curl);
-
-    return response;
-}
-
-
-std::string
-YouTubeExtractor::http_post(
-    const std::string& url,
-    const std::string& body
-)
-{
-    CURL* curl =
-        curl_easy_init();
-
-    if (!curl)
-    {
-        return "";
-    }
-
-    std::string response;
-
-    struct curl_slist* headers = nullptr;
-
-    headers = curl_slist_append(
-        headers,
-        "Content-Type: application/json"
-    );
-
-    headers = curl_slist_append(
-        headers,
-        "User-Agent: com.google.android.youtube/20.10.38"
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_URL,
-        url.c_str()
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_POST,
-        1L
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_POSTFIELDS,
-        body.c_str()
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_HTTPHEADER,
-        headers
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_WRITEFUNCTION,
-        write_callback
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_WRITEDATA,
-        &response
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_FOLLOWLOCATION,
-        1L
-    );
-
-    curl_easy_setopt(
-        curl,
-        CURLOPT_TIMEOUT,
-        30L
-    );
-
-    CURLcode result =
-        curl_easy_perform(curl);
-
-    curl_slist_free_all(headers);
-
-    if (result != CURLE_OK)
-    {
-        curl_easy_cleanup(curl);
-
-        return "";
-    }
-
-    curl_easy_cleanup(curl);
-
-    return response;
-}
-
-
-
-
-
-std::string
-YouTubeExtractor::extract_player_json(
-    const std::string& html
-)
-{
-    std::regex pattern(
-        R"(ytInitialPlayerResponse\s*=\s*(\{[\s\S]+?\});)"
-    );
-
-
-
-    std::smatch match;
-
-    if (
-        std::regex_search(
-            html,
-            match,
-            pattern
-        )
-    )
-    {
-        return match[1];
-    }
-
-    return "";
-}
-
-
-std::string
-YouTubeExtractor::url_decode(
-    const std::string& value
-)
-{
-    std::string result;
-
-    for (
-        size_t i = 0;
-        i < value.size();
-        ++i
-    )
-    {
-        if (
-            value[i] == '%'
-            &&
-            i + 2 < value.size()
-        )
-        {
-            std::string hex =
-                value.substr(i + 1, 2);
-
-            char decoded =
-                static_cast<char>(
-                    std::stoi(
-                        hex,
-                        nullptr,
-                        16
-                    )
-                );
-
-            result += decoded;
-
-            i += 2;
-        }
-        else if (value[i] == '+')
-        {
-            result += ' ';
-        }
-        else
-        {
-            result += value[i];
-        }
-    }
-
-    return result;
-}
-
-
-
-std::string
-YouTubeExtractor::extract_url_from_cipher(
-    const std::string& cipher
-)
-{
-    std::stringstream ss(cipher);
-
-    std::string part;
-
-    while (
-        std::getline(
-            ss,
-            part,
-            '&'
-        )
-    )
-    {
-        size_t eq =
-            part.find('=');
-
-        if (eq == std::string::npos)
-        {
-            continue;
-        }
-
-        std::string key =
-            part.substr(0, eq);
-
-        std::string value =
-            part.substr(eq + 1);
-
-        if (key == "url")
-        {
-            return url_decode(value);
-        }
-    }
-
-    return "";
-}
-
-
-
 std::vector<DownloadTask>
 YouTubeExtractor::extract(
     const std::string& url
 )
 {
+
+    std::string playlist_name =
+        YtDlpBackend::get_playlist_title(url);
+
+    if (
+        url.find("list=")
+        != std::string::npos
+    )
+    {
+
+        HttpClient client;
+
+        HttpRequest http_req;
+
+        http_req.url = url;
+
+        http_req.user_agent =
+            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36";
+
+        http_req.headers =
+        {
+            "Accept-Language: en-US,en;q=0.9",
+            "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Connection: keep-alive",
+            "Upgrade-Insecure-Requests: 1"
+        };
+
+        HttpResponse http_resp =
+            client.get(http_req);
+
+        std::string html =
+            http_resp.body;
+
+        auto playlist_urls =
+            extract_playlist_urls(html);
+        
+        std::string playlist_title =
+            YtDlpBackend::get_playlist_title(url);
+
+        if (html.empty())
+        {
+            std::cout
+                << "Failed to load playlist\n";
+
+            return {};
+        }
+
+
+        auto formats =
+            YtDlpBackend::get_formats(
+                playlist_urls[0]
+            );
+        
+        if (formats.empty())
+        {
+            std::cout
+                << "No formats found\n";
+        
+            return {};
+        }
+        
+        
+        for (
+            size_t i = 0;
+            i < formats.size();
+            ++i
+        )
+        {
+            std::cout
+                << "["
+                << i + 1
+                << "] "
+                << formats[i].description;
+        }
+        
+        
+        std::string choice;
+        
+        std::cout
+            << "\nChoose quality for playlist: ";
+        
+        std::getline(
+            std::cin,
+            choice
+        );
+        
+        
+        std::string selected_format;
+        
+        size_t plus_pos =
+            choice.find('+');
+        
+        if (
+            plus_pos != std::string::npos
+        )
+        {
+            std::string left =
+                choice.substr(
+                    0,
+                    plus_pos
+                );
+        
+            std::string right =
+                choice.substr(
+                    plus_pos + 1
+                );
+        
+            int video_index =
+                std::stoi(left);
+        
+            int audio_index =
+                std::stoi(right);
+        
+            selected_format =
+                formats[
+                    video_index - 1
+                ].id
+                +
+                "+"
+                +
+                formats[
+                    audio_index - 1
+                ].id;
+        }
+        else
+        {
+            int index =
+                std::stoi(choice);
+        
+            selected_format =
+                formats[
+                    index - 1
+                ].id;
+        }
+        
+        
+        std::vector<DownloadTask> tasks;
+        
+        for (const auto& video_url : playlist_urls)
+        {
+            DownloadTask task;
+        
+            task.url =
+                video_url;
+        
+            task.use_ytdlp =
+                true;
+        
+            task.format_id =
+                selected_format;
+
+            task.playlist_title = 
+		playlist_name;
+       
+            tasks.push_back(task);
+        }
+
+
+
+        return tasks;
+    }
+
+
+
+    auto formats =
+        YtDlpBackend::get_formats(url);
+    if (formats.empty())
+    {
+        std::cout
+            << "No formats found\n";
+
+        return {};
+    }
+
+    for (
+        size_t i = 0;
+        i < formats.size();
+        ++i
+    )
+    {
+        std::cout
+            << "["
+            << i + 1
+            << "] "
+            << formats[i].description;
+    }
+
+
+    std::string choice;
+    
     std::cout
-        << "YouTube extraction...\n";
+        << "\nChoose quality: ";
+    
+    std::getline(
+        std::cin,
+        choice
+    );
+
+
+
+    std::cin.ignore();
+
+
+    std::string selected_format;
+    
+    size_t plus_pos =
+        choice.find('+');
+    
+    if (
+        plus_pos != std::string::npos
+    )
+    {
+        std::string left =
+            choice.substr(
+                0,
+                plus_pos
+            );
+    
+        std::string right =
+            choice.substr(
+                plus_pos + 1
+            );
+    
+        int video_index =
+            std::stoi(left);
+    
+        int audio_index =
+            std::stoi(right);
+    
+        if (
+            video_index < 1
+            ||
+            video_index > formats.size()
+            ||
+            audio_index < 1
+            ||
+            audio_index > formats.size()
+        )
+        {
+            std::cout
+                << "Invalid choice\n";
+    
+            return {};
+        }
+    
+        selected_format =
+            formats[
+                video_index - 1
+            ].id
+            +
+            "+"
+            +
+            formats[
+                audio_index - 1
+            ].id;
+    }
+    else
+    {
+        int index =
+            std::stoi(choice);
+    
+        if (
+            index < 1
+            ||
+            index > formats.size()
+        )
+        {
+            std::cout
+                << "Invalid choice\n";
+    
+            return {};
+        }
+    
+        selected_format =
+            formats[
+                index - 1
+            ].id;
+    }
+
+
 
     DownloadTask task;
 
-    task.url = url;
+    task.url =
+        url;
 
-    task.filename =
-        "youtube_video";
+    task.use_ytdlp =
+        true;
 
-    task.use_ytdlp = true;
+    task.format_id =
+        selected_format;
 
     return { task };
 }
