@@ -286,6 +286,7 @@ bool Downloader::download(
         DownloadContext context;
 
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_PATH_AS_IS, 1L);
 
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0L);
