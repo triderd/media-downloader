@@ -131,6 +131,51 @@ DanbooruExtractor::fetch_json(
     return response.body;
 }
 
+std::string
+DanbooruExtractor::fetch_page(
+    const std::string& url,
+    const std::string& referer,
+    const std::string& site_name
+)
+{
+    HttpClient client;
+
+    HttpRequest request;
+
+    request.url = url;
+
+    request.user_agent =
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36";
+
+    request.referer = referer;
+
+    request.headers =
+    {
+        "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language: en-US,en;q=0.9"
+    };
+
+    request.cookies =
+        CookieManager::load(
+            site_name
+        );
+
+    HttpResponse response =
+        client.get(request);
+
+    if (response.status_code >= 400)
+    {
+        std::cerr
+            << "Gelbooru page: HTTP "
+            << response.status_code
+            << "\n";
+
+        return "";
+    }
+
+    return response.body;
+}
+
 std::vector<DownloadTask>
 DanbooruExtractor::extract(
     const std::string& url
@@ -193,6 +238,88 @@ DanbooruExtractor::extract(
 
     if (json_data.empty())
     {
+        if (site == Site::Gelbooru)
+        {
+            std::string page_url =
+                "https://gelbooru.com/index.php"
+                "?page=post&s=view&id="
+                + post_id;
+
+            std::string page_html =
+                fetch_page(
+                    page_url,
+                    referer,
+                    site_name
+                );
+
+            if (!page_html.empty())
+            {
+                std::regex img_regex(
+                    R"DELIM(<img[^>]*id="image"[^>]*src="([^"]+)")DELIM"
+                );
+
+                std::smatch img_match;
+
+                if (
+                    std::regex_search(
+                        page_html,
+                        img_match,
+                        img_regex
+                    )
+                )
+                {
+                    DownloadTask task;
+
+                    task.url =
+                        img_match[1];
+
+                    task.headers =
+                    {
+                        "Referer: " + referer
+                    };
+
+                    task.cookies =
+                        CookieManager::load(
+                            site_name
+                        );
+
+                    size_t last_slash =
+                        task.url.find_last_of('/');
+
+                    if (
+                        last_slash
+                        != std::string::npos
+                    )
+                    {
+                        task.filename =
+                            task.url.substr(
+                                last_slash + 1
+                            );
+                    }
+                    else
+                    {
+                        task.filename =
+                            "gelbooru_"
+                            + post_id;
+                    }
+
+                    size_t qpos =
+                        task.filename.find('?');
+
+                    if (qpos != std::string::npos)
+                    {
+                        task.filename =
+                            task.filename.substr(
+                                0,
+                                qpos
+                            );
+                    }
+
+                    return { task };
+                }
+            }
+        }
+
         return {};
     }
 

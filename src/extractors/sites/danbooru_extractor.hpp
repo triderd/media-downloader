@@ -26,6 +26,12 @@ private:
         const std::string& site_name
     );
 
+    std::string fetch_page(
+        const std::string& url,
+        const std::string& referer,
+        const std::string& site_name
+    );
+
     std::string extract_post_id(
         const std::string& url
     );
