@@ -184,6 +184,18 @@ DanbooruExtractor::extract(
 
     if (post_id.empty())
     {
+        if (
+            site == Site::Danbooru
+            &&
+            (
+                url.find("tags=")
+                != std::string::npos
+            )
+        )
+        {
+            return extract_search(url);
+        }
+
         std::cerr
             << "Danbooru: could not extract post ID\n";
 
@@ -557,4 +569,269 @@ DanbooruExtractor::extract(
     }
 
     return { task };
+}
+
+std::vector<DownloadTask>
+DanbooruExtractor::extract_search(
+    const std::string& url
+)
+{
+    size_t tags_pos =
+        url.find("tags=");
+
+    if (tags_pos == std::string::npos)
+    {
+        return {};
+    }
+
+    std::string tags =
+        url.substr(
+            tags_pos + 5
+        );
+
+    size_t amp_pos =
+        tags.find('&');
+
+    if (amp_pos != std::string::npos)
+    {
+        tags =
+            tags.substr(
+                0,
+                amp_pos
+            );
+    }
+
+    std::string api_url =
+        "https://danbooru.donmai.us/posts.json"
+        "?tags="
+        + tags
+        + "&limit=200";
+
+    std::string json_data =
+        fetch_json(
+            api_url,
+            "https://danbooru.donmai.us/",
+            "danbooru"
+        );
+
+    if (json_data.empty())
+    {
+        return {};
+    }
+
+    json parsed;
+
+    try
+    {
+        parsed =
+            json::parse(
+                json_data
+            );
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr
+            << "Danbooru search: JSON parse error: "
+            << e.what()
+            << "\n";
+
+        return {};
+    }
+
+    if (
+        !parsed.is_array()
+        ||
+        parsed.empty()
+    )
+    {
+        std::cerr
+            << "Danbooru search: no results\n";
+
+        return {};
+    }
+
+    std::vector<DownloadTask> tasks;
+
+    for (const auto& post : parsed)
+    {
+        std::string file_url =
+            get_file_url_from_post(
+                post
+            );
+
+        if (file_url.empty())
+        {
+            continue;
+        }
+
+        DownloadTask task;
+
+        task.url = file_url;
+
+        task.headers =
+        {
+            "Referer: https://danbooru.donmai.us/"
+        };
+
+        task.cookies =
+            CookieManager::load(
+                "danbooru"
+            );
+
+        size_t last_slash =
+            file_url.find_last_of('/');
+
+        if (last_slash != std::string::npos)
+        {
+            task.filename =
+                file_url.substr(
+                    last_slash + 1
+                );
+        }
+
+        size_t qpos =
+            task.filename.find('?');
+
+        if (qpos != std::string::npos)
+        {
+            task.filename =
+                task.filename.substr(
+                    0,
+                    qpos
+                );
+        }
+
+        if (task.filename.empty())
+        {
+            if (post.contains("id"))
+            {
+                task.filename =
+                    "danbooru_"
+                    + std::to_string(
+                        post["id"].get<int>()
+                    );
+            }
+        }
+
+        tasks.push_back(task);
+    }
+
+    return tasks;
+}
+
+std::string
+DanbooruExtractor::get_file_url_from_post(
+    const json& post
+)
+{
+    bool has_sample = false;
+
+    if (
+        post.contains("has_large")
+        &&
+        post["has_large"].is_boolean()
+    )
+    {
+        has_sample =
+            post["has_large"];
+    }
+
+    if (has_sample && post.contains("large_file_url"))
+    {
+        return post["large_file_url"];
+    }
+
+    if (
+        post.contains("file_url")
+    )
+    {
+        std::string file_url =
+            post["file_url"];
+
+        if (
+            file_url.find("/original/")
+            != std::string::npos
+            &&
+            post.contains("md5")
+            &&
+            post.contains("file_ext")
+        )
+        {
+            std::string md5 =
+                post["md5"];
+
+            std::string ext =
+                post["file_ext"];
+
+            std::vector<std::string> tag_parts;
+
+            for (
+                const char* field :
+                {
+                    "tag_string_character",
+                    "tag_string_copyright",
+                    "tag_string_artist"
+                }
+            )
+            {
+                std::string tag_str =
+                    post.value(
+                        field,
+                        ""
+                    );
+
+                if (!tag_str.empty())
+                {
+                    std::string with_underscores;
+
+                    for (char c : tag_str)
+                    {
+                        with_underscores +=
+                            (c == ' ')
+                            ? '_'
+                            : c;
+                    }
+
+                    tag_parts.push_back(
+                        with_underscores
+                    );
+                }
+            }
+
+            if (!tag_parts.empty())
+            {
+                std::string joined;
+
+                for (
+                    size_t i = 0;
+                    i < tag_parts.size();
+                    ++i
+                )
+                {
+                    if (i > 0)
+                    {
+                        joined += "_";
+                    }
+
+                    joined += tag_parts[i];
+                }
+
+                return
+                    "https://cdn.donmai.us/original/"
+                    + md5.substr(0, 2)
+                    + "/"
+                    + md5.substr(2, 2)
+                    + "/__"
+                    + joined
+                    + "__"
+                    + md5
+                    + "."
+                    + ext;
+            }
+        }
+
+        return file_url;
+    }
+
+    return "";
 }

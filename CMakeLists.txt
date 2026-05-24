@@ -31,6 +31,9 @@ add_executable(
     src/extractors/sites/youtube_extractor.cpp
     src/extractors/sites/pixiv_extractor.cpp
     src/extractors/sites/telegram_extractor.cpp
+    src/extractors/sites/instagram_extractor.cpp
+    src/extractors/sites/twitter_extractor.cpp
+    src/extractors/sites/tiktok_extractor.cpp
     src/extractors/sites/danbooru_extractor.cpp
     src/extractors/sites/pattern_extractor.cpp
     src/extractors/sites/ytdlp_extractor.cpp

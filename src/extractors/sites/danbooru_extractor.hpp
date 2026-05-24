@@ -5,6 +5,7 @@
 #include <regex>
 #include <string>
 #include <vector>
+#include <nlohmann/json_fwd.hpp>
 
 class DanbooruExtractor
     : public BaseExtractor
@@ -34,6 +35,16 @@ private:
 
     std::string extract_post_id(
         const std::string& url
+    );
+
+    std::vector<DownloadTask>
+    extract_search(
+        const std::string& url
+    );
+
+    std::string
+    get_file_url_from_post(
+        const nlohmann::json& post
     );
 
     enum class Site

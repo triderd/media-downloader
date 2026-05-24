@@ -3,6 +3,9 @@
 #include "sites/pixiv_extractor.hpp"
 #include "sites/youtube_extractor.hpp"
 #include "sites/telegram_extractor.hpp"
+#include "sites/instagram_extractor.hpp"
+#include "sites/twitter_extractor.hpp"
+#include "sites/tiktok_extractor.hpp"
 #include "sites/danbooru_extractor.hpp"
 #include "sites/pattern_extractor.hpp"
 #include "sites/ytdlp_extractor.hpp"
@@ -24,6 +27,24 @@ ExtractorManager::ExtractorManager()
     extractors.push_back(
         std::make_unique<
             TelegramExtractor
+        >()
+    );
+
+    extractors.push_back(
+        std::make_unique<
+            InstagramExtractor
+        >()
+    );
+
+    extractors.push_back(
+        std::make_unique<
+            TwitterExtractor
+        >()
+    );
+
+    extractors.push_back(
+        std::make_unique<
+            TikTokExtractor
         >()
     );
 

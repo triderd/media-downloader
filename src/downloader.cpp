@@ -255,9 +255,21 @@ bool Downloader::download(
                 )
             );
 
-            std::remove(
-                final_filename.c_str()
-            );
+            if (
+                !std::filesystem::exists(
+                    final_name
+                )
+                ||
+                std::filesystem::file_size(
+                    final_name
+                )
+                == 0
+            )
+            {
+                std::remove(
+                    final_name.c_str()
+                );
+            }
         }
 
         CURL* curl = curl_easy_init();
@@ -271,9 +283,33 @@ bool Downloader::download(
             continue;
         }
 
+        curl_off_t existing_size = 0;
+
+        if (
+            attempt == 1
+            &&
+            std::filesystem::exists(
+                final_name
+            )
+        )
+        {
+            existing_size =
+                std::filesystem::file_size(
+                    final_name
+                );
+
+            if (existing_size > 0)
+            {
+                std::cout
+                    << "Resuming from "
+                    << existing_size
+                    << " bytes\n";
+            }
+        }
+
         FILE* file = fopen(
             final_name.c_str(),
-            "wb"
+            existing_size > 0 ? "ab" : "wb"
         );
 
         if (!file)
@@ -281,6 +317,15 @@ bool Downloader::download(
             std::cerr << "Failed to open file\n";
             curl_easy_cleanup(curl);
             continue;
+        }
+
+        if (existing_size > 0)
+        {
+            curl_easy_setopt(
+                curl,
+                CURLOPT_RESUME_FROM_LARGE,
+                existing_size
+            );
         }
 
         DownloadContext context;
