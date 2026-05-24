@@ -145,3 +145,6 @@ Rule fields:
 | `headers` | (optional) Extra request headers |
 | `cookies_from` | (optional) Cookie file name for auth |
 
+##License
+
+MIT
