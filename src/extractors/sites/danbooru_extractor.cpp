@@ -155,11 +155,6 @@ DanbooruExtractor::fetch_page(
         "Accept-Language: en-US,en;q=0.9"
     };
 
-    request.cookies =
-        CookieManager::load(
-            site_name
-        );
-
     HttpResponse response =
         client.get(request);
 
@@ -199,6 +194,85 @@ DanbooruExtractor::extract(
     std::string referer;
     std::string site_name;
 
+    if (site == Site::Gelbooru)
+    {
+        std::string page_url =
+            "https://gelbooru.com/index.php"
+            "?page=post&s=view&id="
+            + post_id;
+
+        std::string page_html =
+            fetch_page(
+                page_url,
+                "https://gelbooru.com/",
+                "gelbooru"
+            );
+
+        if (!page_html.empty())
+        {
+            std::regex img_regex(
+                R"DELIM(<img[^>]*id="image"[^>]*src="([^"]+)")DELIM"
+            );
+
+            std::smatch img_match;
+
+            if (
+                std::regex_search(
+                    page_html,
+                    img_match,
+                    img_regex
+                )
+            )
+            {
+                DownloadTask task;
+
+                task.url =
+                    img_match[1];
+
+                task.headers =
+                {
+                    "Referer: https://gelbooru.com/"
+                };
+
+                size_t last_slash =
+                    task.url.find_last_of('/');
+
+                if (
+                    last_slash
+                    != std::string::npos
+                )
+                {
+                    task.filename =
+                        task.url.substr(
+                            last_slash + 1
+                        );
+                }
+                else
+                {
+                    task.filename =
+                        "gelbooru_"
+                        + post_id;
+                }
+
+                size_t qpos =
+                    task.filename.find('?');
+
+                if (qpos != std::string::npos)
+                {
+                    task.filename =
+                        task.filename.substr(
+                            0,
+                            qpos
+                        );
+                }
+
+                return { task };
+            }
+        }
+
+        return {};
+    }
+
     if (site == Site::Danbooru)
     {
         api_url =
@@ -210,19 +284,6 @@ DanbooruExtractor::extract(
             "https://danbooru.donmai.us/";
 
         site_name = "danbooru";
-    }
-    else if (site == Site::Gelbooru)
-    {
-        api_url =
-            "https://gelbooru.com/index.php"
-            "?page=dapi&s=post&q=index&json=1"
-            "&id="
-            + post_id;
-
-        referer =
-            "https://gelbooru.com/";
-
-        site_name = "gelbooru";
     }
     else
     {
@@ -238,88 +299,6 @@ DanbooruExtractor::extract(
 
     if (json_data.empty())
     {
-        if (site == Site::Gelbooru)
-        {
-            std::string page_url =
-                "https://gelbooru.com/index.php"
-                "?page=post&s=view&id="
-                + post_id;
-
-            std::string page_html =
-                fetch_page(
-                    page_url,
-                    referer,
-                    site_name
-                );
-
-            if (!page_html.empty())
-            {
-                std::regex img_regex(
-                    R"DELIM(<img[^>]*id="image"[^>]*src="([^"]+)")DELIM"
-                );
-
-                std::smatch img_match;
-
-                if (
-                    std::regex_search(
-                        page_html,
-                        img_match,
-                        img_regex
-                    )
-                )
-                {
-                    DownloadTask task;
-
-                    task.url =
-                        img_match[1];
-
-                    task.headers =
-                    {
-                        "Referer: " + referer
-                    };
-
-                    task.cookies =
-                        CookieManager::load(
-                            site_name
-                        );
-
-                    size_t last_slash =
-                        task.url.find_last_of('/');
-
-                    if (
-                        last_slash
-                        != std::string::npos
-                    )
-                    {
-                        task.filename =
-                            task.url.substr(
-                                last_slash + 1
-                            );
-                    }
-                    else
-                    {
-                        task.filename =
-                            "gelbooru_"
-                            + post_id;
-                    }
-
-                    size_t qpos =
-                        task.filename.find('?');
-
-                    if (qpos != std::string::npos)
-                    {
-                        task.filename =
-                            task.filename.substr(
-                                0,
-                                qpos
-                            );
-                    }
-
-                    return { task };
-                }
-            }
-        }
-
         return {};
     }
 
