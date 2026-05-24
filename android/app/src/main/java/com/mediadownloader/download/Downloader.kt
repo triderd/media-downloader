@@ -20,7 +20,8 @@ class Downloader {
         task: DownloadTask,
         outputFile: String,
         maxRetries: Int = 3,
-        showProgress: Boolean = true
+        showProgress: Boolean = true,
+        onProgress: ((Float) -> Unit)? = null
     ): Boolean = withContext(Dispatchers.IO) {
         val finalName = outputFile.ifEmpty {
             extractFilenameFromUrl(task.url)
@@ -59,8 +60,8 @@ class Downloader {
                 continue
             }
 
-            val mode = if (existingSize > 0) "ab" else "wb"
-            val file = FileOutputStream(finalName, mode == "ab").use { fos ->
+            val append = existingSize > 0
+            FileOutputStream(finalName, append).use { fos ->
                 response.body?.byteStream()?.use { input ->
                     val buffer = ByteArray(8192)
                     var totalRead = existingSize
@@ -72,12 +73,15 @@ class Downloader {
                         fos.write(buffer, 0, bytesRead)
                         totalRead += bytesRead
                         val now = System.currentTimeMillis()
-                        if (showProgress && totalSize > 0 && now - lastUpdate > 250) {
+                        if (totalSize > 0 && now - lastUpdate > 250) {
                             lastUpdate = now
-                            val pct = (totalRead.toDouble() / totalSize * 100)
-                            val dlMb = totalRead / 1024.0 / 1024.0
-                            val totMb = totalSize / 1024.0 / 1024.0
-                            print("\r[%.1f%%] %.1f MB / %.1f MB".format(pct, dlMb, totMb))
+                            val pct = totalRead.toFloat() / totalSize.toFloat()
+                            if (showProgress) {
+                                val dlMb = totalRead / 1024.0 / 1024.0
+                                val totMb = totalSize / 1024.0 / 1024.0
+                                print("\r[%.1f%%] %.1f MB / %.1f MB".format(pct * 100, dlMb, totMb))
+                            }
+                            onProgress?.invoke(pct)
                         }
                     }
                 }
@@ -86,7 +90,7 @@ class Downloader {
             response.close()
 
             if (finalName.endsWith(".zip") && task.frameDelays.isNotEmpty()) {
-                processUgoira(finalName, task.frameDelays)
+                processUgoiraSafe(finalName, task.frameDelays)
             }
 
             return@withContext true
@@ -94,31 +98,44 @@ class Downloader {
         return@withContext false
     }
 
-    private fun processUgoira(zipFile: String, frameDelays: List<Int>) {
-        val folder = "${zipFile}_frames"
-        val mp4File = zipFile.removeSuffix(".zip") + ".mp4"
+    private fun processUgoiraSafe(zipFile: String, frameDelays: List<Int>) {
+        try {
+            val folder = "${zipFile}_frames"
+            val mp4File = zipFile.removeSuffix(".zip") + ".mp4"
 
-        File(folder).mkdirs()
-        Runtime.getRuntime().exec(arrayOf("unzip", "-o", zipFile, "-d", folder)).waitFor()
-
-        val concatFile = File("$folder/concat.txt")
-        concatFile.bufferedWriter().use { writer ->
-            writer.write("ffconcat version 1.0\n")
-            for (i in frameDelays.indices) {
-                val frameName = "%06d.jpg".format(i)
-                writer.write("file '$folder/$frameName'\n")
-                writer.write("duration ${frameDelays[i] / 1000.0}\n")
+            File(folder).mkdirs()
+            val unzipProc = Runtime.getRuntime().exec(arrayOf("unzip", "-o", zipFile, "-d", folder))
+            unzipProc.waitFor()
+            if (unzipProc.exitValue() != 0) {
+                System.err.println("unzip not available — keeping ZIP as-is")
+                return
             }
-        }
 
-        println("Converting to MP4 (${frameDelays.size} frames)...")
-        Runtime.getRuntime().exec(arrayOf(
-            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
-            "-i", "$folder/concat.txt",
-            "-c:v", "libx264", "-pix_fmt", "yuv420p",
-            "-vf", "fps=60,setpts=PTS-STARTPTS",
-            mp4File
-        )).waitFor()
+            val concatFile = File("$folder/concat.txt")
+            concatFile.bufferedWriter().use { writer ->
+                writer.write("ffconcat version 1.0\n")
+                for (i in frameDelays.indices) {
+                    val frameName = "%06d.jpg".format(i)
+                    writer.write("file '$folder/$frameName'\n")
+                    writer.write("duration ${frameDelays[i] / 1000.0}\n")
+                }
+            }
+
+            println("Converting to MP4 (${frameDelays.size} frames)...")
+            val ffmpegProc = Runtime.getRuntime().exec(arrayOf(
+                "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+                "-i", "$folder/concat.txt",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                "-vf", "fps=60,setpts=PTS-STARTPTS",
+                mp4File
+            ))
+            ffmpegProc.waitFor()
+            if (ffmpegProc.exitValue() != 0) {
+                System.err.println("ffmpeg not available — keeping ZIP as-is")
+            }
+        } catch (e: Exception) {
+            System.err.println("Ugoira processing failed (unzip/ffmpeg not on device): ${e.message}")
+        }
     }
 
     fun extractFilenameFromUrl(url: String): String {

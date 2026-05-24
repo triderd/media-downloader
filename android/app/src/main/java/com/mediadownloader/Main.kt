@@ -4,11 +4,10 @@ import com.mediadownloader.config.Config
 import com.mediadownloader.download.Downloader
 import com.mediadownloader.extractors.DownloadTask
 import com.mediadownloader.extractors.ExtractorManager
+import com.mediadownloader.ytdlp.YtDlpRunner
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 suspend fun main(args: Array<String>) {
     Config.load()
@@ -68,8 +67,10 @@ suspend fun processUrl(url: String): Pair<Int, Int> {
     val manager = ExtractorManager()
     val downloader = Downloader()
 
-    if (url.let { it.endsWith(".jpg") || it.endsWith(".png") || it.endsWith(".jpeg") ||
-            it.endsWith(".gif") || it.endsWith(".webp") || it.endsWith(".mp4") || it.endsWith(".webm") }) {
+    val isDirectUrl = url.endsWith(".jpg") || url.endsWith(".png") || url.endsWith(".jpeg") ||
+        url.endsWith(".gif") || url.endsWith(".webp") || url.endsWith(".mp4") || url.endsWith(".webm")
+
+    if (isDirectUrl) {
         val filename = url.substringAfterLast('/').let {
             it.substringBefore('?').ifEmpty { "downloaded_file" }
         }
@@ -113,7 +114,12 @@ suspend fun processUrl(url: String): Pair<Int, Int> {
                 "$downloadFolder/${downloader.sanitizeFilename(task.filename)}"
 
             val ok = if (task.useYtdlp) {
-                ytdlpDownload(task)
+                println("Running yt-dlp...")
+                YtDlpRunner.download(
+                    url = task.url,
+                    formatId = task.formatId,
+                    outputDir = if (downloadFolder.isEmpty()) Config.getDownloadDir() else downloadFolder
+                )
             } else {
                 downloader.download(task, filename)
             }
@@ -135,7 +141,11 @@ suspend fun processUrl(url: String): Pair<Int, Int> {
 
                     println("\u001B[90mDownloading: ${task.url}\u001B[0m")
                     val ok = if (task.useYtdlp) {
-                        ytdlpDownload(task)
+                        YtDlpRunner.download(
+                            url = task.url,
+                            formatId = task.formatId,
+                            outputDir = if (downloadFolder.isEmpty()) Config.getDownloadDir() else downloadFolder
+                        )
                     } else {
                         localDl.download(task, filename, showProgress = false)
                     }
@@ -150,13 +160,6 @@ suspend fun processUrl(url: String): Pair<Int, Int> {
     }
 
     return Pair(completed, failed)
-}
-
-fun ytdlpDownload(task: DownloadTask): Boolean {
-    val cmd = "yt-dlp -f ${task.formatId} -o \"%(title)s.%(ext)s\" \"${task.url}\""
-    println("Running yt-dlp...")
-    val proc = Runtime.getRuntime().exec(arrayOf("bash", "-c", cmd))
-    return proc.waitFor() == 0
 }
 
 fun readUrlsFromFile(path: String): List<String> {

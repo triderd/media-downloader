@@ -1,5 +1,6 @@
 plugins {
     id("com.android.application")
+    id("com.chaquo.python")
     kotlin("android")
     kotlin("plugin.serialization")
     kotlin("plugin.compose")
@@ -15,6 +16,10 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "x86_64")
+        }
     }
 
     compileOptions {
@@ -44,4 +49,13 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.0")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+}
+
+chaquopy {
+    defaultConfig {
+        version = "3.8"
+        pip {
+            install("yt-dlp")
+        }
+    }
 }

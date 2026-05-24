@@ -1,5 +1,7 @@
 package com.mediadownloader.config
 
+import android.content.Context
+import android.os.Environment
 import com.mediadownloader.auth.Paths
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -29,6 +31,15 @@ object Config {
     }
 
     fun getDownloadDir() = data.download_dir
+
     fun getDefaultFormat() = data.default_format
+
     fun getConcurrentDownloads() = data.concurrent_downloads
+
+    fun resolveDownloadDir(context: Context): String {
+        val configured = data.download_dir
+        if (configured != ".") return configured
+        return context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath
+            ?: context.filesDir.absolutePath
+    }
 }

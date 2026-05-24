@@ -1,13 +1,14 @@
 package com.mediadownloader.ui
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mediadownloader.config.Config
 import com.mediadownloader.download.Downloader
 import com.mediadownloader.extractors.DownloadTask
 import com.mediadownloader.extractors.ExtractorManager
+import com.mediadownloader.ytdlp.YtDlpRunner
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +28,7 @@ data class DownloadItem(
     val error: String = ""
 )
 
-class DownloadViewModel : ViewModel() {
+class DownloadViewModel(application: Application) : AndroidViewModel(application) {
     private val extractorManager = ExtractorManager()
 
     private val _items = MutableStateFlow<List<DownloadItem>>(emptyList())
@@ -71,11 +72,15 @@ class DownloadViewModel : ViewModel() {
         try {
             updateItem(item.id) { it.copy(status = DownloadStatus.EXTRACTING) }
 
-            val tasks = if (item.url.let {
-                it.endsWith(".jpg") || it.endsWith(".png") || it.endsWith(".jpeg") ||
-                it.endsWith(".gif") || it.endsWith(".webp") || it.endsWith(".mp4") ||
-                it.endsWith(".webm")
-            }) {
+            val isDirectUrl = item.url.endsWith(".jpg") ||
+                item.url.endsWith(".png") ||
+                item.url.endsWith(".jpeg") ||
+                item.url.endsWith(".gif") ||
+                item.url.endsWith(".webp") ||
+                item.url.endsWith(".mp4") ||
+                item.url.endsWith(".webm")
+
+            val tasks = if (isDirectUrl) {
                 listOf(DownloadTask(url = item.url))
             } else {
                 extractorManager.extract(item.url)
@@ -89,8 +94,9 @@ class DownloadViewModel : ViewModel() {
             }
 
             val downloader = Downloader()
-            val downloadDir = Config.getDownloadDir()
+            val downloadDir = Config.resolveDownloadDir(getApplication())
             var allOk = true
+            var lastError = ""
 
             for (task in tasks) {
                 val filename = if (task.filename.isNotEmpty()) {
@@ -103,34 +109,53 @@ class DownloadViewModel : ViewModel() {
                 if (dir != null && !dir.exists()) dir.mkdirs()
 
                 updateItem(item.id) {
-                    it.copy(status = DownloadStatus.DOWNLOADING, filename = task.filename)
+                    it.copy(status = DownloadStatus.DOWNLOADING, filename = task.filename, progress = 0f)
                 }
 
-                val ok = if (task.useYtdlp) {
-                    ytdlpDownload(task)
+                if (task.useYtdlp) {
+                    lastError = ""
+                    val ok = YtDlpRunner.download(
+                        url = task.url,
+                        formatId = task.formatId,
+                        outputDir = downloadDir,
+                        onProgress = { pct ->
+                            viewModelScope.launch {
+                                updateItem(item.id) { it.copy(progress = pct) }
+                            }
+                        }
+                    )
+                    if (!ok) {
+                        allOk = false
+                        lastError = "yt-dlp failed"
+                    } else {
+                        updateItem(item.id) { it.copy(progress = 1f) }
+                    }
                 } else {
-                    downloader.download(task, filename, showProgress = false)
-                }
-
-                if (!ok) {
-                    allOk = false
+                    val ok = downloader.download(
+                        task = task,
+                        outputFile = filename,
+                        showProgress = false,
+                        onProgress = { pct ->
+                            viewModelScope.launch {
+                                updateItem(item.id) { it.copy(progress = pct) }
+                            }
+                        }
+                    )
+                    if (!ok) {
+                        allOk = false
+                        lastError = "Download failed"
+                    }
                 }
             }
 
             updateItem(item.id) {
                 if (allOk) it.copy(status = DownloadStatus.COMPLETED, progress = 1f)
-                else it.copy(status = DownloadStatus.FAILED, error = "Download failed")
+                else it.copy(status = DownloadStatus.FAILED, error = lastError)
             }
         } catch (e: Exception) {
             updateItem(item.id) {
                 it.copy(status = DownloadStatus.FAILED, error = e.message ?: "Unknown error")
             }
         }
-    }
-
-    private fun ytdlpDownload(task: DownloadTask): Boolean {
-        val cmd = "yt-dlp -f ${task.formatId} -o \"%(title)s.%(ext)s\" \"${task.url}\""
-        val proc = Runtime.getRuntime().exec(arrayOf("sh", "-c", cmd))
-        return proc.waitFor() == 0
     }
 }
