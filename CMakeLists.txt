@@ -15,6 +15,8 @@ if(NOT CURL_FOUND)
     endif()
 endif()
 
+find_package(nlohmann_json QUIET)
+
 add_executable(
     media_downloader
 
@@ -40,6 +42,14 @@ target_include_directories(
     src
     ${CURL_INCLUDE_DIRS}
 )
+
+if(nlohmann_json_FOUND)
+    target_link_libraries(
+        media_downloader
+        PRIVATE
+        nlohmann_json::nlohmann_json
+    )
+endif()
 
 target_link_libraries(
     media_downloader

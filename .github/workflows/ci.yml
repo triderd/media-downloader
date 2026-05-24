@@ -38,7 +38,8 @@ jobs:
       - name: Configure
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_PREFIX_PATH="$(brew --prefix)"
+            -DCMAKE_PREFIX_PATH="$(brew --prefix)" \
+            -DCMAKE_CXX_FLAGS="-I$(brew --prefix)/include"
 
       - name: Build
         run: cmake --build build
