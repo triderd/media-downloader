@@ -100,7 +100,7 @@ mdw -h
 | **YouTube** | yt-dlp for format listing & download, playlists | — |
 | **Telegram** | t.me/s/ page scraping, photos + albums | — |
 | **Danbooru** | JSON API, Cloudflare bypass via descriptive URL | `cookies/danbooru.txt` |
-| **Gelbooru** | Page scraping + CDN sample download | `cookies/gelbooru.txt` |
+| **Gelbooru** | Page scraping (API blocked), CDN sample download | not required |
 | **Pattern** | User-defined regex rules (patterns.json) | optional |
 | **Everything else** | yt-dlp backend (1000+ sites) | — |
 
@@ -116,9 +116,6 @@ echo "_danbooru_session=YOUR_SESSION" > cookies/danbooru.txt
 
 # Pixiv — PHPSESSID (F12 → Application → Cookies → PHPSESSID)
 echo "PHPSESSID=YOUR_SESSION" > cookies/pixiv.txt
-
-# Gelbooru — session cookies if needed
-echo "user_id=YOUR_ID; pass_hash=YOUR_HASH" > cookies/gelbooru.txt
 ```
 
 ## Configuration
@@ -137,7 +134,23 @@ echo "user_id=YOUR_ID; pass_hash=YOUR_HASH" > cookies/gelbooru.txt
 |-------|-------------|---------|
 | `download_dir` | Download directory (`.` = current) | `.` |
 | `default_format` | Default format for yt-dlp | `bestvideo+bestaudio/best` |
-| `concurrent_downloads` | Parallel download threads | `3` |
+| `concurrent_downloads` | Parallel download threads (1 = sequential) | `3` |
+
+## Architecture
+
+Extractors are tried in priority order — the first one that matches the URL wins:
+
+```
+Pixiv → YouTube → Telegram → Danbooru → Pattern → YtDlp (catch-all)
+```
+
+- **Pixiv** — AJAX API calls, parses JSON for illustration pages and ugoira metadata. Ugoira frames are extracted with correct per-frame delays via ffmpeg concat demuxer.
+- **YouTube** — delegates format listing and download to yt-dlp. Playlist video IDs are scraped from the page HTML.
+- **Telegram** — fetches t.me/s/ static HTML, filters photo elements by post ID in the href attribute.
+- **Danbooru** — JSON API. For files behind Cloudflare (original CDN), constructs a descriptive URL from tags.
+- **Gelbooru** — page HTML scraping (API blocked behind auth). Extracts `<img id="image">` from the post page.
+- **Pattern** — user-defined regex rules from `patterns.json`. Only matches URLs with matching rules.
+- **YtDlp** — delegates to yt-dlp for everything else. Covers 1000+ sites.
 
 ## Custom Rules (patterns.json)
 
