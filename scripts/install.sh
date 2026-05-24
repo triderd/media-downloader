@@ -36,8 +36,13 @@ echo "==> Copying default configs to $CONFIG_DIR..."
 if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
     echo ""
     echo "NOTE: Add $BIN_DIR to your PATH if not already:"
-    echo "  echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc"
-    echo "  source ~/.bashrc"
+    if [ -f "$HOME/.zshrc" ] || [ "$SHELL" = "/bin/zsh" ] || [ "$SHELL" = "/usr/bin/zsh" ]; then
+        echo "  echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.zshrc"
+        echo "  source ~/.zshrc"
+    else
+        echo "  echo 'export PATH=\"\$HOME/.local/bin:\$PATH\"' >> ~/.bashrc"
+        echo "  source ~/.bashrc"
+    fi
 fi
 
 echo ""

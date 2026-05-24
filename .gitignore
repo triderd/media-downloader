@@ -1,4 +1,7 @@
 build/
+build_*/
+build_android_libs/
+build_curl/
 *.o
 *.a
 *.so
