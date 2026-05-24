@@ -2,6 +2,10 @@ build/
 build_*/
 build_android_libs/
 build_curl/
+
+android/.gradle/
+android/build/
+android/app/build/
 *.o
 *.a
 *.so
