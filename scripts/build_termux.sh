@@ -1,7 +1,4 @@
 #!/data/data/com.termux/files/usr/bin/bash
-# Termux native build for media-downloader (aarch64)
-# Usage: bash scripts/build_termux.sh
-
 set -e
 
 echo "==> Installing dependencies..."

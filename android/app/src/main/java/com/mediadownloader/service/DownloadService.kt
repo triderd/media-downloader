@@ -61,10 +61,10 @@ class DownloadService : Service() {
         var completed = 0
         var failed = 0
 
-        for ((index, url) in urls) {
+        for (url in urls) {
             updateNotification(
                 title = "Media Downloader",
-                content = "Extracting ($index + 1/${urls.size})...",
+                content = "Extracting (${urls.indexOf(url) + 1}/${urls.size})...",
                 progress = null
             )
 

@@ -1,11 +1,4 @@
 #!/bin/bash
-# Cross-compile for Android via NDK (aarch64, API 24+)
-# Usage:
-#   export ANDROID_NDK=/path/to/android-ndk-r27
-#   bash scripts/build_ndk.sh
-#
-# This builds libcurl from source for Android, then builds media_downloader.
-
 set -e
 
 if [ -z "$ANDROID_NDK" ]; then

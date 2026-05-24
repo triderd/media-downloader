@@ -3,8 +3,8 @@
 
 Categories: Internet,Multimedia
 License: MIT
-SourceCode: https://github.com/anomalyco/media-downloader
-IssueTracker: https://github.com/anomalyco/media-downloader/issues
+SourceCode: https://github.com/triderd/media-downloader
+IssueTracker: https://github.com/triderd/media-downloader/issues
 
 AutoName: Media Downloader
 Summary: Download media from Pixiv, YouTube, Telegram, Danbooru, and 1000+ sites
@@ -16,7 +16,7 @@ Description: |
     Custom sites can be added via regex patterns.
 
 RepoType: git
-Repo: https://github.com/anomalyco/media-downloader
+Repo: https://github.com/triderd/media-downloader
 
 Builds:
   - versionName: '1.0'

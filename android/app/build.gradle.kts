@@ -14,12 +14,15 @@ android {
         create("release") {
             val propsFile = rootProject.file("keystore.properties")
             if (propsFile.exists()) {
-                val props = java.util.Properties()
-                props.load(propsFile.inputStream())
-                storeFile = file(props.getProperty("storeFile"))
-                storePassword = props.getProperty("storePassword")
-                keyAlias = props.getProperty("keyAlias")
-                keyPassword = props.getProperty("keyPassword")
+                val props = HashMap<String, String>()
+                propsFile.forEachLine { line ->
+                    val parts = line.split("=", limit = 2)
+                    if (parts.size == 2) props[parts[0].trim()] = parts[1].trim()
+                }
+                props["storeFile"]?.let { storeFile = file(it) }
+                props["storePassword"]?.let { storePassword = it }
+                props["keyAlias"]?.let { keyAlias = it }
+                props["keyPassword"]?.let { keyPassword = it }
             }
         }
     }

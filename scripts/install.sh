@@ -1,7 +1,4 @@
 #!/bin/bash
-# Install media-downloader as system-wide 'mdw' command
-# Usage: bash scripts/install.sh [--uninstall]
-
 set -e
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/media-downloader"
