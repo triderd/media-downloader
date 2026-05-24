@@ -8,6 +8,7 @@ import com.mediadownloader.download.Downloader
 import com.mediadownloader.extractors.DownloadTask
 import com.mediadownloader.extractors.ExtractorManager
 import com.mediadownloader.ytdlp.YtDlpRunner
+import com.mediadownloader.service.DownloadService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +47,10 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             processItem(item)
         }
+    }
+
+    fun startBackgroundDownload(url: String) {
+        DownloadService.start(getApplication(), listOf(url))
     }
 
     fun startCurrentDownload() {
