@@ -1,0 +1,34 @@
+# F-Droid Build Recipe
+# Submit to: https://gitlab.com/fdroid/fdroiddata
+
+Categories: Internet,Multimedia
+License: MIT
+SourceCode: https://github.com/anomalyco/media-downloader
+IssueTracker: https://github.com/anomalyco/media-downloader/issues
+
+AutoName: Media Downloader
+Summary: Download media from Pixiv, YouTube, Telegram, Danbooru, and 1000+ sites
+Description: |
+    Cross-platform CLI and Android media downloader.
+    Supports Pixiv (ugoira→MP4), YouTube playlists,
+    Telegram channels, Danbooru/Gelbooru tag search,
+    Instagram, Twitter/X, TikTok, and 1000+ sites via yt-dlp.
+    Custom sites can be added via regex patterns.
+
+RepoType: git
+Repo: https://github.com/anomalyco/media-downloader
+
+Builds:
+  - versionName: '1.0'
+    versionCode: 1
+    commit: v1.0
+    subdir: android
+    gradle:
+      - yes
+    prebuild:
+      - sed -i '/signingConfig = signingConfigs/d' app/build.gradle.kts
+    scanignore:
+      - app/build/
+
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
