@@ -31,13 +31,6 @@ brew install cmake curl nlohmann-json ffmpeg unzip
 pip install yt-dlp
 ```
 
-### Termux (Android)
-
-```bash
-pkg install cmake clang curl libcurl nlohmann-json python ffmpeg unzip
-pip install yt-dlp
-```
-
 ## Build & Run
 
 ```bash
@@ -76,13 +69,10 @@ cmake --install build --prefix /usr/local   # → /usr/local/bin/mdw
 ## Usage
 
 ```bash
-# Interactive mode (type URL when prompted)
 mdw
 
-# Single URL as argument
 mdw "https://t.me/channel/123"
 
-# Multiple URLs
 mdw "url1" "url2" "url3"
 
 # From file (one URL per line, # for comments)
@@ -94,15 +84,7 @@ mdw -h
 
 ## Supported Sites
 
-| Site | Method | Auth file |
-|------|--------|-----------|
-| **Pixiv** | AJAX API, illustrations + ugoira with correct FPS | `cookies/pixiv.txt` |
-| **YouTube** | yt-dlp for format listing & download, playlists | — |
-| **Telegram** | t.me/s/ page scraping, photos + albums | — |
-| **Danbooru** | JSON API, Cloudflare bypass via descriptive URL | `cookies/danbooru.txt` |
-| **Gelbooru** | Page scraping (API blocked), CDN sample download | not required |
-| **Pattern** | User-defined regex rules (patterns.json) | optional |
-| **Everything else** | yt-dlp backend (1000+ sites) | — |
+**Pixiv**(cookies required), **Youtube**, **Telegram**, **Danbooru**(cookies required), **Gelbooru**, **1000+ yt-dlp sites**
 
 ## Authentication Cookies
 
@@ -136,22 +118,6 @@ echo "PHPSESSID=YOUR_SESSION" > cookies/pixiv.txt
 | `default_format` | Default format for yt-dlp | `bestvideo+bestaudio/best` |
 | `concurrent_downloads` | Parallel download threads (1 = sequential) | `3` |
 
-## Architecture
-
-Extractors are tried in priority order — the first one that matches the URL wins:
-
-```
-Pixiv → YouTube → Telegram → Danbooru → Pattern → YtDlp (catch-all)
-```
-
-- **Pixiv** — AJAX API calls, parses JSON for illustration pages and ugoira metadata. Ugoira frames are extracted with correct per-frame delays via ffmpeg concat demuxer.
-- **YouTube** — delegates format listing and download to yt-dlp. Playlist video IDs are scraped from the page HTML.
-- **Telegram** — fetches t.me/s/ static HTML, filters photo elements by post ID in the href attribute.
-- **Danbooru** — JSON API. For files behind Cloudflare (original CDN), constructs a descriptive URL from tags.
-- **Gelbooru** — page HTML scraping (API blocked behind auth). Extracts `<img id="image">` from the post page.
-- **Pattern** — user-defined regex rules from `patterns.json`. Only matches URLs with matching rules.
-- **YtDlp** — delegates to yt-dlp for everything else. Covers 1000+ sites.
-
 ## Custom Rules (patterns.json)
 
 Add your own regex-based extractors in `patterns.json`:
@@ -179,6 +145,3 @@ Rule fields:
 | `headers` | (optional) Extra request headers |
 | `cookies_from` | (optional) Cookie file name for auth |
 
-## License
-
-MIT
