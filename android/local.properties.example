@@ -1,0 +1,4 @@
+# Android SDK location
+# Set this to your SDK path or create a file android/local.properties
+# The build.sh script will create this automatically.
+sdk.dir=/home/triderd/Android/Sdk
