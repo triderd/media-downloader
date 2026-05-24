@@ -27,6 +27,10 @@
             android:name=".service.DownloadService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <activity
+            android:name=".ui.auth.WebViewActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

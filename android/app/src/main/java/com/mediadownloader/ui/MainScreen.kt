@@ -1,5 +1,8 @@
 package com.mediadownloader.ui
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -7,20 +10,23 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mediadownloader.ui.auth.WebViewActivity
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +34,22 @@ fun MainScreen(viewModel: DownloadViewModel) {
     val items by viewModel.items.collectAsState()
     val inputUrl by viewModel.inputUrl.collectAsState()
     val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+    var showMenu by remember { mutableStateOf(false) }
+
+    val importCookieLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            try {
+                val name = uri.lastPathSegment ?: "imported.txt"
+                val content = context.contentResolver.openInputStream(uri)?.bufferedReader()?.readText() ?: ""
+                val cookieDir = File(context.filesDir, "cookies")
+                if (!cookieDir.exists()) cookieDir.mkdirs()
+                File(cookieDir, name).writeText(content)
+            } catch (_: Exception) {}
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -37,6 +59,30 @@ fun MainScreen(viewModel: DownloadViewModel) {
                     if (items.any { it.status == DownloadStatus.COMPLETED || it.status == DownloadStatus.FAILED }) {
                         IconButton(onClick = { viewModel.clearCompleted() }) {
                             Icon(Icons.Default.Clear, contentDescription = "Clear")
+                        }
+                    }
+                    Box {
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Login via WebView") },
+                                onClick = {
+                                    showMenu = false
+                                    context.startActivity(Intent(context, WebViewActivity::class.java))
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Import cookies") },
+                                onClick = {
+                                    showMenu = false
+                                    importCookieLauncher.launch(arrayOf("*/*"))
+                                }
+                            )
                         }
                     }
                 }
