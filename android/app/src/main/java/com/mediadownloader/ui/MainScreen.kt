@@ -9,7 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Paste
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -70,7 +70,7 @@ fun MainScreen(viewModel: DownloadViewModel) {
                     val text = clipboard.getText()?.text ?: ""
                     if (text.isNotEmpty()) viewModel.setInputUrl(text)
                 }) {
-                    Icon(Icons.Default.Paste, contentDescription = "Paste")
+                    Icon(Icons.Default.ContentPaste, contentDescription = "Paste")
                 }
             }
 
