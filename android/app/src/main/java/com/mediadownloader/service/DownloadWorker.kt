@@ -59,7 +59,7 @@ class DownloadWorker(
                     url = task.url,
                     formatId = task.formatId,
                     outputDir = downloadDir
-                )
+                ).success
             } else {
                 downloader.download(
                     task = task,

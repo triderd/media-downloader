@@ -12,7 +12,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -22,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -33,6 +37,7 @@ import java.io.File
 fun MainScreen(viewModel: DownloadViewModel) {
     val items by viewModel.items.collectAsState()
     val inputUrl by viewModel.inputUrl.collectAsState()
+    val darkTheme by viewModel.darkTheme.collectAsState()
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
@@ -60,6 +65,12 @@ fun MainScreen(viewModel: DownloadViewModel) {
                         IconButton(onClick = { viewModel.clearCompleted() }) {
                             Icon(Icons.Default.Clear, contentDescription = "Clear")
                         }
+                    }
+                    IconButton(onClick = { viewModel.toggleDarkTheme() }) {
+                        Icon(
+                            if (darkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription = "Toggle theme"
+                        )
                     }
                     Box {
                         IconButton(onClick = { showMenu = true }) {
@@ -104,7 +115,7 @@ fun MainScreen(viewModel: DownloadViewModel) {
                     value = inputUrl,
                     onValueChange = { viewModel.setInputUrl(it) },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Paste URL here...") },
+                    placeholder = { Text("Paste URL(s) — space-separated") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                     keyboardActions = KeyboardActions(onGo = { viewModel.startCurrentDownload() })
@@ -203,21 +214,59 @@ fun DownloadItemCard(item: DownloadItem) {
 
             if (item.status == DownloadStatus.DOWNLOADING || item.status == DownloadStatus.COMPLETED) {
                 Spacer(modifier = Modifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = { item.progress },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                if (item.progress < 0f) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                } else {
+                    LinearProgressIndicator(
+                        progress = { item.progress },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                if (item.progress > 0f) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    val dlText = if (item.totalMb > 0f) {
+                        "%.1f / %.1f MB".format(item.downloadedMb, item.totalMb)
+                    } else {
+                        "%.1f MB".format(item.downloadedMb)
+                    }
+                    val speedText = if (item.speedMbps > 0f) {
+                        "  •  %.1f MB/s".format(item.speedMbps)
+                    } else ""
+                    val etaText = if (item.etaSeconds > 0L) {
+                        val min = item.etaSeconds / 60
+                        val sec = item.etaSeconds % 60
+                        "  •  %d:%02d left".format(min, sec)
+                    } else ""
+                    Text(
+                        text = "${(item.progress * 100).toInt()}%  —  $dlText$speedText$etaText",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             if (item.error.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = item.error,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace
+                    ),
                     color = MaterialTheme.colorScheme.error,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    maxLines = 20,
+                    overflow = TextOverflow.Clip
                 )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                    val clipboard = LocalClipboardManager.current
+                    TextButton(onClick = {
+                        clipboard.setText(AnnotatedString(item.error))
+                    }) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Copy error", style = MaterialTheme.typography.labelSmall)
+                    }
+                }
             }
 
             if (item.filename.isNotEmpty() && item.status == DownloadStatus.COMPLETED) {

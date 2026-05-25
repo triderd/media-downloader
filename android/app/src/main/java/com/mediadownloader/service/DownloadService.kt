@@ -104,24 +104,25 @@ class DownloadService : Service() {
                         url = task.url,
                         formatId = task.formatId,
                         outputDir = downloadDir,
-                        onProgress = { pct ->
+                        onProgress = { info ->
                             updateNotification(
                                 title = "Downloading",
                                 content = task.filename.ifEmpty { task.url },
-                                progress = pct
+                                progress = info.pct
                             )
+
                         }
-                    )
+                    ).success
                 } else {
                     downloader.download(
                         task = task,
                         outputFile = filename,
                         showProgress = false,
-                        onProgress = { pct ->
+                        onProgress = { info ->
                             updateNotification(
                                 title = "Downloading",
                                 content = task.filename.ifEmpty { task.url },
-                                progress = pct
+                                progress = info.progress
                             )
                         }
                     )

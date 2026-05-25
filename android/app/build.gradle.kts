@@ -83,9 +83,9 @@ dependencies {
 
 chaquopy {
     defaultConfig {
-        version = "3.8"
+        version = "3.10"
         pip {
-            install("yt-dlp")
+            install("yt-dlp>=2025.1.0")
         }
     }
 }

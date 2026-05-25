@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mediadownloader.config.Config
 import com.mediadownloader.download.Downloader
+import com.mediadownloader.download.ProgressInfo
 import com.mediadownloader.extractors.DownloadTask
 import com.mediadownloader.extractors.ExtractorManager
 import com.mediadownloader.ytdlp.YtDlpRunner
@@ -26,6 +27,10 @@ data class DownloadItem(
     val filename: String = "",
     val status: DownloadStatus = DownloadStatus.QUEUED,
     val progress: Float = 0f,
+    val downloadedMb: Float = 0f,
+    val totalMb: Float = 0f,
+    val speedMbps: Float = 0f,
+    val etaSeconds: Long = -1L,
     val error: String = ""
 )
 
@@ -38,7 +43,12 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
     private val _inputUrl = MutableStateFlow("")
     val inputUrl: StateFlow<String> = _inputUrl.asStateFlow()
 
+    private val _darkTheme = MutableStateFlow(true)
+    val darkTheme: StateFlow<Boolean> = _darkTheme.asStateFlow()
+
     fun setInputUrl(url: String) { _inputUrl.value = url }
+
+    fun toggleDarkTheme() { _darkTheme.value = !_darkTheme.value }
 
     fun startDownload(url: String) {
         val item = DownloadItem(url = url, status = DownloadStatus.QUEUED)
@@ -54,11 +64,14 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun startCurrentDownload() {
-        val url = _inputUrl.value.trim()
-        if (url.isNotEmpty()) {
+        val raw = _inputUrl.value.trim()
+        if (raw.isEmpty()) return
+
+        val urls = raw.split("\\s+".toRegex()).filter { it.isNotBlank() }
+        for (url in urls) {
             startDownload(url)
-            _inputUrl.value = ""
         }
+        _inputUrl.value = ""
     }
 
     fun clearCompleted() {
@@ -119,19 +132,28 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
 
                 if (task.useYtdlp) {
                     lastError = ""
-                    val ok = YtDlpRunner.download(
+                    updateItem(item.id) { it.copy(progress = -1f, downloadedMb = 0f, totalMb = 0f, speedMbps = 0f, etaSeconds = -1L) }
+                    val result = YtDlpRunner.download(
                         url = task.url,
                         formatId = task.formatId,
                         outputDir = downloadDir,
-                        onProgress = { pct ->
+                        onProgress = { info ->
                             viewModelScope.launch {
-                                updateItem(item.id) { it.copy(progress = pct) }
+                                updateItem(item.id) {
+                                    it.copy(
+                                        progress = if (info.total > 0) info.pct else -1f,
+                                        downloadedMb = info.downloaded / (1024f * 1024f),
+                                        totalMb = info.total / (1024f * 1024f),
+                                        speedMbps = info.speed / (1024f * 1024f),
+                                        etaSeconds = info.eta
+                                    )
+                                }
                             }
                         }
                     )
-                    if (!ok) {
+                    if (!result.success) {
                         allOk = false
-                        lastError = "yt-dlp failed"
+                        lastError = result.error.ifEmpty { "yt-dlp failed" }
                     } else {
                         updateItem(item.id) { it.copy(progress = 1f) }
                     }
@@ -140,9 +162,17 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                         task = task,
                         outputFile = filename,
                         showProgress = false,
-                        onProgress = { pct ->
+                        onProgress = { info ->
                             viewModelScope.launch {
-                                updateItem(item.id) { it.copy(progress = pct) }
+                                updateItem(item.id) {
+                                    it.copy(
+                                        progress = info.progress,
+                                        downloadedMb = info.downloadedMb,
+                                        totalMb = info.totalMb,
+                                        speedMbps = info.speedMbps,
+                                        etaSeconds = info.etaSeconds
+                                    )
+                                }
                             }
                         }
                     )

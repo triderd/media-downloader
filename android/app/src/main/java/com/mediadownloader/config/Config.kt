@@ -10,7 +10,7 @@ import java.io.File
 @Serializable
 data class ConfigData(
     val download_dir: String = ".",
-    val default_format: String = "bestvideo+bestaudio/best",
+    val default_format: String = "best[height<=1080]",
     val concurrent_downloads: Int = 3
 )
 
@@ -39,7 +39,8 @@ object Config {
     fun resolveDownloadDir(context: Context): String {
         val configured = data.download_dir
         if (configured != ".") return configured
-        return context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.absolutePath
-            ?: context.filesDir.absolutePath
+        return Environment.getExternalStoragePublicDirectory(
+            Environment.DIRECTORY_DOWNLOADS
+        ).absolutePath
     }
 }

@@ -21,7 +21,7 @@ class Downloader {
         outputFile: String,
         maxRetries: Int = 3,
         showProgress: Boolean = true,
-        onProgress: ((Float) -> Unit)? = null
+        onProgress: ((ProgressInfo) -> Unit)? = null
     ): Boolean = withContext(Dispatchers.IO) {
         val finalName = outputFile.ifEmpty {
             extractFilenameFromUrl(task.url)
@@ -61,6 +61,7 @@ class Downloader {
             }
 
             val append = existingSize > 0
+            val startTime = System.currentTimeMillis()
             FileOutputStream(finalName, append).use { fos ->
                 response.body?.byteStream()?.use { input ->
                     val buffer = ByteArray(8192)
@@ -68,20 +69,28 @@ class Downloader {
                     val totalSize = existingSize + (response.body?.contentLength() ?: 0)
                     var bytesRead: Int
                     var lastUpdate = System.currentTimeMillis()
+                    var lastBytes = totalRead
 
                     while (input.read(buffer).also { bytesRead = it } != -1) {
                         fos.write(buffer, 0, bytesRead)
                         totalRead += bytesRead
                         val now = System.currentTimeMillis()
                         if (totalSize > 0 && now - lastUpdate > 250) {
-                            lastUpdate = now
                             val pct = totalRead.toFloat() / totalSize.toFloat()
+                            val elapsed = ((now - startTime) / 1000.0).coerceAtLeast(0.1)
+                            val speed = ((totalRead - existingSize) / elapsed).toFloat()
+                            val speedMbps = speed / (1024f * 1024f)
+                            val dlMb = totalRead / (1024.0 * 1024.0)
+                            val totMb = totalSize / (1024.0 * 1024.0)
+                            val remaining = totalSize - totalRead
+                            val eta = if (speed > 0) (remaining / speed).toLong() else -1L
+
                             if (showProgress) {
-                                val dlMb = totalRead / 1024.0 / 1024.0
-                                val totMb = totalSize / 1024.0 / 1024.0
-                                print("\r[%.1f%%] %.1f MB / %.1f MB".format(pct * 100, dlMb, totMb))
+                                print("\r[%.1f%%] %.1f MB / %.1f MB  %.1f MB/s".format(
+                                    pct * 100, dlMb, totMb, speedMbps))
                             }
-                            onProgress?.invoke(pct)
+                            onProgress?.invoke(ProgressInfo(pct, dlMb.toFloat(), totMb.toFloat(), speedMbps, eta))
+                            lastUpdate = now
                         }
                     }
                 }

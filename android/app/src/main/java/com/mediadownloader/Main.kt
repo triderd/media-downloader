@@ -119,7 +119,7 @@ suspend fun processUrl(url: String): Pair<Int, Int> {
                     url = task.url,
                     formatId = task.formatId,
                     outputDir = if (downloadFolder.isEmpty()) Config.getDownloadDir() else downloadFolder
-                )
+                ).success
             } else {
                 downloader.download(task, filename)
             }
@@ -145,7 +145,7 @@ suspend fun processUrl(url: String): Pair<Int, Int> {
                             url = task.url,
                             formatId = task.formatId,
                             outputDir = if (downloadFolder.isEmpty()) Config.getDownloadDir() else downloadFolder
-                        )
+                        ).success
                     } else {
                         localDl.download(task, filename, showProgress = false)
                     }
