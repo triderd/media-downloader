@@ -31,6 +31,8 @@ data class DownloadItem(
     val totalMb: Float = 0f,
     val speedMbps: Float = 0f,
     val etaSeconds: Long = -1L,
+    val title: String = "",
+    val thumbnail: String = "",
     val error: String = ""
 )
 
@@ -145,7 +147,9 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                                         downloadedMb = info.downloaded / (1024f * 1024f),
                                         totalMb = info.total / (1024f * 1024f),
                                         speedMbps = info.speed / (1024f * 1024f),
-                                        etaSeconds = info.eta
+                                        etaSeconds = info.eta,
+                                        title = if (info.title.isNotEmpty()) info.title else it.title,
+                                        thumbnail = if (info.thumbnail.isNotEmpty()) info.thumbnail else it.thumbnail
                                     )
                                 }
                             }

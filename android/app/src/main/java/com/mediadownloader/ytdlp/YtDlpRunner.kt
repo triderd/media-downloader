@@ -17,7 +17,9 @@ object YtDlpRunner {
         val downloaded: Long,
         val total: Long,
         val speed: Long,
-        val eta: Long
+        val eta: Long,
+        val title: String = "",
+        val thumbnail: String = ""
     )
 
     private val counter = AtomicInteger(0)
@@ -61,7 +63,9 @@ object YtDlpRunner {
                                 json.optLong("downloaded", 0),
                                 json.optLong("total", 0),
                                 json.optLong("speed", 0),
-                                json.optLong("eta", 0)
+                                json.optLong("eta", 0),
+                                json.optString("title", ""),
+                                json.optString("thumbnail", "")
                             ))
                         }
                     } catch (_: Exception) {}

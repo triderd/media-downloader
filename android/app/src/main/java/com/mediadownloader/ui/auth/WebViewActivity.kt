@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import kotlinx.coroutines.delay
 import java.io.File
 
 class WebViewActivity : ComponentActivity() {
@@ -50,27 +51,30 @@ fun AuthScreen(
 ) {
     var selectedSite by remember { mutableStateOf(initialSite.first) }
     var webView by remember { mutableStateOf<WebView?>(null) }
+    var loginDetected by remember { mutableStateOf(false) }
     val selectedUrl = sites.first { it.first == selectedSite }.second
+    val loginUrl = selectedUrl
 
     LaunchedEffect(selectedUrl) {
         webView?.loadUrl(selectedUrl)
+        loginDetected = false
+    }
+
+    LaunchedEffect(loginDetected) {
+        if (loginDetected && webView != null) {
+            delay(500)
+            val cookies = CookieManager.getInstance().getCookie(loginUrl)
+            if (!cookies.isNullOrEmpty()) {
+                saveCookies(filesDir, selectedSite.lowercase(), cookies)
+                onCookiesSaved(selectedSite, cookies)
+            }
+        }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Login — $selectedSite") },
-                actions = {
-                    TextButton(onClick = {
-                        val cookies = CookieManager.getInstance().getCookie(selectedUrl)
-                        if (!cookies.isNullOrEmpty()) {
-                            saveCookies(filesDir, selectedSite.lowercase(), cookies)
-                        }
-                        onCookiesSaved(selectedSite, cookies ?: "")
-                    }) {
-                        Text("Save")
-                    }
-                }
+                title = { Text("Login — $selectedSite") }
             )
         }
     ) { padding ->
@@ -101,7 +105,13 @@ fun AuthScreen(
                     WebView(ctx).apply {
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
-                        webViewClient = WebViewClient()
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageFinished(view: WebView, url: String) {
+                                if (!url.contains("login", true) && !loginDetected) {
+                                    loginDetected = true
+                                }
+                            }
+                        }
                         loadUrl(selectedUrl)
                     }.also { webView = it }
                 },

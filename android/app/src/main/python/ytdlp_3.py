@@ -38,7 +38,7 @@ if os.path.exists(_ARGS_FILE):
         except:
             pass
 
-    code, err = 0, ""
+    code, err, title, thumbnail = 0, "", "", ""
     try:
         ydl = yt_dlp.YoutubeDL({
             'format': _args.get("fmt", "bestvideo+bestaudio/best"),
@@ -48,6 +48,15 @@ if os.path.exists(_ARGS_FILE):
             'progress_hooks': [progress_hook],
             'socket_timeout': 30,
         })
+
+        info = ydl.extract_info(_args["url"], download=False)
+        title = info.get('title', '') if info else ''
+        thumbnail = info.get('thumbnail', '') if info else ''
+
+        with open(_PROGRESS_FILE, 'w') as pf:
+            json.dump({'pct': 0, 'title': title, 'thumbnail': thumbnail,
+                       'downloaded': 0, 'total': 0, 'speed': 0, 'eta': 0}, pf)
+
         ydl.download([_args["url"]])
     except SystemExit as e:
         code = e.code if e.code is not None else 0
@@ -56,4 +65,4 @@ if os.path.exists(_ARGS_FILE):
         err = type(e).__name__ + ": " + str(e) + "\n" + traceback.format_exc()
 
     with open(_RESULT_FILE, "w") as f:
-        json.dump({"code": code, "err": err}, f)
+        json.dump({"code": code, "err": err, "title": title, "thumbnail": thumbnail}, f)

@@ -14,21 +14,24 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.mediadownloader.ui.auth.WebViewActivity
 import java.io.File
 
@@ -67,9 +70,9 @@ fun MainScreen(viewModel: DownloadViewModel) {
                         }
                     }
                     IconButton(onClick = { viewModel.toggleDarkTheme() }) {
-                        Icon(
-                            if (darkTheme) Icons.Default.LightMode else Icons.Default.DarkMode,
-                            contentDescription = "Toggle theme"
+                        Switch(
+                            checked = darkTheme,
+                            onCheckedChange = { viewModel.toggleDarkTheme() }
                         )
                     }
                     Box {
@@ -172,44 +175,84 @@ fun MainScreen(viewModel: DownloadViewModel) {
 }
 
 @Composable
+fun StatusLabel(item: DownloadItem) {
+    val statusColor = when (item.status) {
+        DownloadStatus.COMPLETED -> MaterialTheme.colorScheme.primary
+        DownloadStatus.FAILED -> MaterialTheme.colorScheme.error
+        DownloadStatus.DOWNLOADING -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val statusText = when (item.status) {
+        DownloadStatus.QUEUED -> "Queued"
+        DownloadStatus.EXTRACTING -> "Extracting"
+        DownloadStatus.DOWNLOADING -> "Downloading"
+        DownloadStatus.COMPLETED -> "Done"
+        DownloadStatus.FAILED -> "Failed"
+    }
+    Text(
+        text = statusText,
+        style = MaterialTheme.typography.labelSmall,
+        color = statusColor
+    )
+}
+
+@Composable
 fun DownloadItemCard(item: DownloadItem) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = item.url,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodySmall,
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                val statusColor = when (item.status) {
-                    DownloadStatus.COMPLETED -> MaterialTheme.colorScheme.primary
-                    DownloadStatus.FAILED -> MaterialTheme.colorScheme.error
-                    DownloadStatus.DOWNLOADING -> MaterialTheme.colorScheme.tertiary
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+            if (item.thumbnail.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    AsyncImage(
+                        model = item.thumbnail,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(RectangleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        if (item.title.isNotEmpty()) {
+                            Text(
+                                text = item.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                        }
+                        Text(
+                            text = item.url,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
-                val statusText = when (item.status) {
-                    DownloadStatus.QUEUED -> "Queued"
-                    DownloadStatus.EXTRACTING -> "Extracting"
-                    DownloadStatus.DOWNLOADING -> "Downloading"
-                    DownloadStatus.COMPLETED -> "Done"
-                    DownloadStatus.FAILED -> "Failed"
+                Spacer(modifier = Modifier.height(4.dp))
+                StatusLabel(item)
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = item.url,
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodySmall,
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    StatusLabel(item)
                 }
-
-                Text(
-                    text = statusText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = statusColor
-                )
             }
 
             if (item.status == DownloadStatus.DOWNLOADING || item.status == DownloadStatus.COMPLETED) {
