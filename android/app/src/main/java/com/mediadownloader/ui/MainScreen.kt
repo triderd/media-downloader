@@ -70,10 +70,7 @@ fun MainScreen(viewModel: DownloadViewModel) {
                         }
                     }
                     IconButton(onClick = { viewModel.toggleDarkTheme() }) {
-                        Switch(
-                            checked = darkTheme,
-                            onCheckedChange = { viewModel.toggleDarkTheme() }
-                        )
+                        Text(if (darkTheme) "☀️" else "🌙", style = MaterialTheme.typography.titleMedium)
                     }
                     Box {
                         IconButton(onClick = { showMenu = true }) {

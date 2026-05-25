@@ -39,8 +39,11 @@ object Config {
     fun resolveDownloadDir(context: Context): String {
         val configured = data.download_dir
         if (configured != ".") return configured
-        return Environment.getExternalStoragePublicDirectory(
+        val base = Environment.getExternalStoragePublicDirectory(
             Environment.DIRECTORY_DOWNLOADS
         ).absolutePath
+        val dir = java.io.File(base, "MediaDownloader")
+        if (!dir.exists()) dir.mkdirs()
+        return dir.absolutePath
     }
 }

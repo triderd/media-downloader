@@ -1,6 +1,7 @@
 package com.mediadownloader.ui
 
 import android.app.Application
+import android.media.MediaScannerConnection
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mediadownloader.config.Config
@@ -188,8 +189,14 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
             }
 
             updateItem(item.id) {
-                if (allOk) it.copy(status = DownloadStatus.COMPLETED, progress = 1f)
-                else it.copy(status = DownloadStatus.FAILED, error = lastError)
+                if (allOk) {
+                    MediaScannerConnection.scanFile(
+                        getApplication(),
+                        arrayOf(downloadDir),
+                        null, null
+                    )
+                    it.copy(status = DownloadStatus.COMPLETED, progress = 1f)
+                } else it.copy(status = DownloadStatus.FAILED, error = lastError)
             }
         } catch (e: Exception) {
             updateItem(item.id) {
