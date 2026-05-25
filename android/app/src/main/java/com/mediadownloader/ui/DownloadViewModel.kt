@@ -55,7 +55,7 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
 
     fun startDownload(url: String) {
         val item = DownloadItem(url = url, status = DownloadStatus.QUEUED)
-        _items.value = _items.value + item
+        _items.value = listOf(item) + _items.value
 
         viewModelScope.launch {
             processItem(item)

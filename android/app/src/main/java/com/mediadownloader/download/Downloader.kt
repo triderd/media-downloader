@@ -110,22 +110,28 @@ class Downloader(
         return@withContext false
     }
 
-    private fun processUgoiraSafe(zipFile: String, frameDelays: List<Int>) {
+    private suspend fun processUgoiraSafe(zipFile: String, frameDelays: List<Int>) {
         try {
             val folder = "${zipFile}_frames"
             val mp4File = zipFile.removeSuffix(".zip") + ".mp4"
 
             File(folder).mkdirs()
-            val unzipProc = Runtime.getRuntime().exec(arrayOf("unzip", "-o", zipFile, "-d", folder))
-            unzipProc.waitFor()
-            if (unzipProc.exitValue() != 0) {
-                System.err.println("unzip not available — keeping ZIP as-is")
-                return
+            File(mp4File).parentFile?.mkdirs()
+
+            withContext(Dispatchers.IO) {
+                val unzipProc = Runtime.getRuntime().exec(arrayOf("unzip", "-o", zipFile, "-d", folder))
+                unzipProc.waitFor()
+                if (unzipProc.exitValue() != 0) {
+                    System.err.println("unzip not available — keeping ZIP as-is")
+                    return@withContext
+                }
             }
 
             println("Converting ${frameDelays.size} frames to MP4...")
             val ok = if (context != null) {
-                UgoiraEncoder.encode(context, folder, frameDelays, mp4File)
+                withContext(Dispatchers.Main) {
+                    UgoiraEncoder.encode(context!!, folder, frameDelays, mp4File)
+                }
             } else {
                 false
             }
