@@ -18,9 +18,8 @@ import java.io.File
 class WebViewActivity : ComponentActivity() {
 
     private val sites = listOf(
-        "Danbooru" to "https://danbooru.donmai.us/login",
-        "Gelbooru" to "https://gelbooru.com/index.php?page=account&s=login",
-        "Pixiv" to "https://www.pixiv.net/login.php"
+        "Pixiv" to "https://www.pixiv.net/login.php",
+        "Gelbooru" to "https://gelbooru.com/index.php?page=account&s=login"
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,7 +49,12 @@ fun AuthScreen(
     filesDir: File
 ) {
     var selectedSite by remember { mutableStateOf(initialSite.first) }
+    var webView by remember { mutableStateOf<WebView?>(null) }
     val selectedUrl = sites.first { it.first == selectedSite }.second
+
+    LaunchedEffect(selectedUrl) {
+        webView?.loadUrl(selectedUrl)
+    }
 
     Scaffold(
         topBar = {
@@ -99,7 +103,7 @@ fun AuthScreen(
                         settings.domStorageEnabled = true
                         webViewClient = WebViewClient()
                         loadUrl(selectedUrl)
-                    }
+                    }.also { webView = it }
                 },
                 modifier = Modifier.weight(1f)
             )
