@@ -94,6 +94,13 @@ fun MainScreen(viewModel: DownloadViewModel) {
                                     importCookieLauncher.launch(arrayOf("*/*"))
                                 }
                             )
+                            DropdownMenuItem(
+                                text = { Text("View Logs") },
+                                onClick = {
+                                    showMenu = false
+                                    viewModel.toggleLogs()
+                                }
+                            )
                         }
                     }
                 }
@@ -163,10 +170,36 @@ fun MainScreen(viewModel: DownloadViewModel) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(items, key = { it.id }) { item ->
-                        DownloadItemCard(item)
+                        DownloadItemCard(item, viewModel)
                     }
                 }
             }
+        }
+
+        if (viewModel.showLogs.collectAsState().value) {
+            val logs by viewModel.logLines.collectAsState()
+            AlertDialog(
+                onDismissRequest = { viewModel.toggleLogs() },
+                title = { Text("Logs") },
+                text = {
+                    LazyColumn {
+                        items(logs) { line ->
+                            Text(
+                                text = line,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = FontFamily.Monospace
+                                ),
+                                modifier = Modifier.padding(vertical = 1.dp)
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { viewModel.toggleLogs() }) {
+                        Text("Close")
+                    }
+                }
+            )
         }
     }
 }
@@ -194,7 +227,7 @@ fun StatusLabel(item: DownloadItem) {
 }
 
 @Composable
-fun DownloadItemCard(item: DownloadItem) {
+fun DownloadItemCard(item: DownloadItem, viewModel: DownloadViewModel) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(12.dp)) {
             if (item.thumbnail.isNotEmpty()) {
@@ -306,6 +339,13 @@ fun DownloadItemCard(item: DownloadItem) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Copy error", style = MaterialTheme.typography.labelSmall)
                     }
+                }
+            }
+
+            if (item.status == DownloadStatus.FAILED) {
+                Spacer(modifier = Modifier.height(4.dp))
+                TextButton(onClick = { viewModel.retryFailed(item) }) {
+                    Text("Retry", style = MaterialTheme.typography.labelSmall)
                 }
             }
 

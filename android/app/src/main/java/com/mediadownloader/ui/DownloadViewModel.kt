@@ -49,11 +49,30 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
     private val _darkTheme = MutableStateFlow(true)
     val darkTheme: StateFlow<Boolean> = _darkTheme.asStateFlow()
 
+    private val _logLines = MutableStateFlow<List<String>>(emptyList())
+    val logLines: StateFlow<List<String>> = _logLines.asStateFlow()
+
+    private val _showLogs = MutableStateFlow(false)
+    val showLogs: StateFlow<Boolean> = _showLogs.asStateFlow()
+
     fun setInputUrl(url: String) { _inputUrl.value = url }
 
     fun toggleDarkTheme() { _darkTheme.value = !_darkTheme.value }
+    fun toggleLogs() { _showLogs.value = !_showLogs.value }
+
+    private fun addLog(msg: String) {
+        val ts = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        _logLines.value = listOf("$ts  $msg") + _logLines.value.take(99)
+    }
+
+    fun retryFailed(item: DownloadItem) {
+        _inputUrl.value = item.url
+        startDownload(item.url)
+    }
 
     fun startDownload(url: String) {
+        addLog("START: $url")
         val item = DownloadItem(url = url, status = DownloadStatus.QUEUED)
         _items.value = listOf(item) + _items.value
 
@@ -108,12 +127,14 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
             }
 
             if (tasks.isEmpty()) {
+                addLog("FAIL: No media found for ${item.url}")
                 updateItem(item.id) {
                     it.copy(status = DownloadStatus.FAILED, error = "No media found")
                 }
                 return@withContext
             }
 
+            addLog("FOUND: ${tasks.size} files for ${item.url}")
             val downloader = Downloader(getApplication())
             val downloadDir = Config.resolveDownloadDir(getApplication())
             var allOk = true
@@ -198,7 +219,9 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                     it.copy(status = DownloadStatus.COMPLETED, progress = 1f)
                 } else it.copy(status = DownloadStatus.FAILED, error = lastError)
             }
+            addLog(if (allOk) "DONE: ${item.url}" else "FAIL: ${item.url} — $lastError")
         } catch (e: Exception) {
+            addLog("CRASH: ${item.url} — ${e.message}")
             updateItem(item.id) {
                 it.copy(status = DownloadStatus.FAILED, error = e.message ?: "Unknown error")
             }
