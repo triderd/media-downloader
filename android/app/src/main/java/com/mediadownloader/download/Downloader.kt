@@ -130,21 +130,47 @@ class Downloader {
                 }
             }
 
+            val ffmpegPath = findFfmpeg()
+            if (ffmpegPath == null) {
+                System.err.println("ffmpeg not found — keeping ZIP + frames in $folder")
+                return
+            }
+
             println("Converting to MP4 (${frameDelays.size} frames)...")
             val ffmpegProc = Runtime.getRuntime().exec(arrayOf(
-                "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+                ffmpegPath, "-y", "-f", "concat", "-safe", "0",
                 "-i", "$folder/concat.txt",
                 "-c:v", "libx264", "-pix_fmt", "yuv420p",
                 "-vf", "fps=60,setpts=PTS-STARTPTS",
                 mp4File
             ))
             ffmpegProc.waitFor()
-            if (ffmpegProc.exitValue() != 0) {
-                System.err.println("ffmpeg not available — keeping ZIP as-is")
+
+            if (ffmpegProc.exitValue() == 0) {
+                File(zipFile).delete()
+                File(folder).deleteRecursively()
+                println("Ugoira done: $mp4File")
+            } else {
+                System.err.println("ffmpeg failed — keeping ZIP + frames in $folder")
             }
         } catch (e: Exception) {
             System.err.println("Ugoira processing failed (unzip/ffmpeg not on device): ${e.message}")
         }
+    }
+
+    private fun findFfmpeg(): String? {
+        for (path in listOf(
+            "/data/data/com.termux/files/usr/bin/ffmpeg",
+            "/usr/bin/ffmpeg",
+            "/usr/local/bin/ffmpeg",
+            "ffmpeg"
+        )) {
+            try {
+                val proc = Runtime.getRuntime().exec(arrayOf(path, "-version"))
+                if (proc.waitFor() == 0) return path
+            } catch (_: Exception) {}
+        }
+        return null
     }
 
     fun extractFilenameFromUrl(url: String): String {
