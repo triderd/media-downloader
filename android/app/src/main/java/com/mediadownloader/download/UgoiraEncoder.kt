@@ -139,12 +139,10 @@ object UgoiraEncoder {
         bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
 
         val ySize = width * height
-        val uvSize = (width / 2) * (height / 2)
-        val yuv = ByteArray(ySize + uvSize * 2)
+        val nv12 = ByteArray(ySize + ySize / 2)
 
         var yIndex = 0
-        var uIndex = ySize
-        var vIndex = ySize + uvSize
+        var uvIndex = ySize
 
         for (j in 0 until height) {
             for (i in 0 until width) {
@@ -153,14 +151,16 @@ object UgoiraEncoder {
                 val g = (pixel shr 8) and 0xFF
                 val b = pixel and 0xFF
 
-                yuv[yIndex++] = ((66 * r + 129 * g + 25 * b + 128) shr 8 + 16).toByte()
+                nv12[yIndex++] = ((66 * r + 129 * g + 25 * b + 128) shr 8 + 16).toByte()
 
                 if (j % 2 == 0 && i % 2 == 0) {
-                    yuv[uIndex++] = ((-38 * r - 74 * g + 112 * b + 128) shr 8 + 128).toByte()
-                    yuv[vIndex++] = ((112 * r - 94 * g - 18 * b + 128) shr 8 + 128).toByte()
+                    val u = ((-38 * r - 74 * g + 112 * b + 128) shr 8 + 128).toByte()
+                    val v = ((112 * r - 94 * g - 18 * b + 128) shr 8 + 128).toByte()
+                    nv12[uvIndex++] = u
+                    nv12[uvIndex++] = v
                 }
             }
         }
-        return yuv
+        return nv12
     }
 }

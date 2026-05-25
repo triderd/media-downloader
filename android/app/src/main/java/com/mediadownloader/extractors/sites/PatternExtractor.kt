@@ -48,7 +48,10 @@ class PatternExtractor : BaseExtractor {
         val mediaUrls = mutableSetOf<String>()
         for (pattern in rule.mediaPatterns) {
             for (match in pattern.findAll(html)) {
-                mediaUrls.add(match.groupValues[1])
+                val resolved = resolveUrl(url, match.groupValues[1])
+                if (!isJunkImage(resolved)) {
+                    mediaUrls.add(resolved)
+                }
             }
         }
 
@@ -84,6 +87,15 @@ class PatternExtractor : BaseExtractor {
             )
         )
         return if (resp.statusCode < 400) resp.body else ""
+    }
+
+    private fun isJunkImage(url: String): Boolean {
+        val lower = url.lowercase()
+        val junkWords = listOf("favicon", "/icon/", "pixel", "blank.", "spacer", "1x1", "button", "badge")
+        for (word in junkWords) {
+            if (word in lower) return true
+        }
+        return false
     }
 
     private fun resolveUrl(pageUrl: String, mediaUrl: String): String {
