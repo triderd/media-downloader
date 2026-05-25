@@ -1,5 +1,6 @@
 package com.mediadownloader.download
 
+import android.content.Context
 import com.mediadownloader.extractors.DownloadTask
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
@@ -8,7 +9,9 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 
-class Downloader {
+class Downloader(
+    private val context: Context? = null
+) {
     private val client = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.SECONDS)
@@ -121,7 +124,11 @@ class Downloader {
             }
 
             println("Converting ${frameDelays.size} frames to MP4...")
-            val ok = UgoiraEncoder.encode(folder, frameDelays, mp4File)
+            val ok = if (context != null) {
+                UgoiraEncoder.encode(context, folder, frameDelays, mp4File)
+            } else {
+                false
+            }
 
             if (ok) {
                 File(zipFile).delete()

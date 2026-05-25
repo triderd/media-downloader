@@ -114,7 +114,7 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
                 return@withContext
             }
 
-            val downloader = Downloader()
+            val downloader = Downloader(getApplication())
             val downloadDir = Config.resolveDownloadDir(getApplication())
             var allOk = true
             var lastError = ""

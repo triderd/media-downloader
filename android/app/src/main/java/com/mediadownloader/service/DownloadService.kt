@@ -55,7 +55,7 @@ class DownloadService : Service() {
     }
 
     private suspend fun processUrls(urls: List<String>) {
-        val downloader = Downloader()
+        val downloader = Downloader(this)
         val extractorManager = ExtractorManager()
         val downloadDir = Config.resolveDownloadDir(this)
         var completed = 0

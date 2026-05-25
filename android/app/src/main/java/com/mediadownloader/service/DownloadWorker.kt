@@ -39,7 +39,7 @@ class DownloadWorker(
 
         if (tasks.isEmpty()) return@withContext Result.failure()
 
-        val downloader = Downloader()
+        val downloader = Downloader(applicationContext)
         var allOk = true
 
         for (task in tasks) {

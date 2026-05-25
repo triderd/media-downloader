@@ -78,6 +78,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.0")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("androidx.media3:media3-transformer:1.6.1")
+    implementation("androidx.media3:media3-exoplayer:1.6.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
