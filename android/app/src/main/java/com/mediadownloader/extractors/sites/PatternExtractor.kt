@@ -14,6 +14,17 @@ class PatternExtractor : BaseExtractor {
 
     init {
         loadRules("patterns.json")
+        rules.add(PatternRule(
+            name = "generic",
+            urlMatch = Regex("."),
+            mediaPatterns = listOf(
+                Regex("""<meta[^>]+property="og:image"[^>]+content="([^"]+)""""),
+                Regex("""<meta[^>]+property="og:video"[^>]+content="([^"]+)""""),
+                Regex("""<meta[^>]+name="twitter:image"[^>]+content="([^"]+)""""),
+                Regex("""<img[^>]+src="([^"]+\.(jpg|jpeg|png|gif|webp))""""),
+                Regex("""<video[^>]+src="([^"]+\.(mp4|webm))"""")
+            )
+        ))
     }
 
     data class PatternRule(
