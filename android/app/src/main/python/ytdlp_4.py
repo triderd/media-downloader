@@ -1,4 +1,4 @@
-import yt_dlp, sys, json, os, traceback
+import yt_dlp, json, os, traceback
 
 _ARGS_FILE = "/data/data/com.mediadownloader/files/ytdlp_args.json"
 _RESULT_FILE = _ARGS_FILE + ".result"
@@ -31,11 +31,13 @@ if os.path.exists(_ARGS_FILE):
                         }, pf)
             elif d['status'] == 'finished':
                 with open(_PROGRESS_FILE, 'w') as pf:
-                    json.dump({'pct': 1.0, 'downloaded': d.get('total_bytes', 0), 'total': d.get('total_bytes', 0), 'speed': 0, 'eta': 0}, pf)
+                    json.dump(
+                        {'pct': 1.0, 'downloaded': d.get('total_bytes', 0),
+                         'total': d.get('total_bytes', 0), 'speed': 0, 'eta': 0},
+                        pf)
         except:
             pass
 
-    sys.argv = ["yt-dlp","-f",_args.get("fmt","bestvideo+bestaudio/best"),"-o",_args.get("tmpl","%(title)s.%(ext)s"),"--no-progress",_args["url"]]
     code, err = 0, ""
     try:
         ydl = yt_dlp.YoutubeDL({
@@ -52,5 +54,6 @@ if os.path.exists(_ARGS_FILE):
     except Exception as e:
         code = 1
         err = type(e).__name__ + ": " + str(e) + "\n" + traceback.format_exc()
-    with open(_RESULT_FILE,"w") as f:
-        json.dump({"code":code,"err":err},f)
+
+    with open(_RESULT_FILE, "w") as f:
+        json.dump({"code": code, "err": err}, f)
