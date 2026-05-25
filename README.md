@@ -82,6 +82,27 @@ mdw -f urls.txt
 mdw -h
 ```
 
+## Android APK
+
+Download the latest APK from [Releases](https://github.com/triderd/media-downloader/releases/latest) or build from source:
+
+```bash
+cd android
+bash build.sh
+# → app/build/outputs/apk/debug/app-debug.apk
+```
+
+```bash
+# Install via adb
+adb install android/app/build/outputs/apk/debug/app-debug.apk
+
+# Or just open the APK on your phone
+```
+
+**Requirements for building:** JDK 17, Android SDK (platform 35, build-tools 35).
+
+The Android app bundles Python 3.10 + yt-dlp inside the APK. No Termux or external dependencies needed.
+
 ## Supported Sites
 
 **Pixiv**(cookies required), **Youtube**, **Telegram**, **Danbooru**(cookies required), **Gelbooru**, **1000+ yt-dlp sites**
@@ -145,6 +166,6 @@ Rule fields:
 | `headers` | (optional) Extra request headers |
 | `cookies_from` | (optional) Cookie file name for auth |
 
-##License
+## License
 
 MIT
