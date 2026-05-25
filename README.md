@@ -105,7 +105,7 @@ The Android app bundles Python 3.10 + yt-dlp inside the APK. No Termux or extern
 
 ## Supported Sites
 
-**Pixiv**(cookies required), **Youtube**, **Telegram**, **Danbooru**(cookies required), **Gelbooru**, **1000+ yt-dlp sites**
+**Pixiv**(cookies required), **Youtube**, **Telegram**, **Danbooru**(cookies required), **Gelbooru**, **Pornhub**, **1000+ yt-dlp sites**
 
 ## Authentication Cookies
 
