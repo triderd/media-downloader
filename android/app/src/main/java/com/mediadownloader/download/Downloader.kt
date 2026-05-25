@@ -120,57 +120,19 @@ class Downloader {
                 return
             }
 
-            val concatFile = File("$folder/concat.txt")
-            concatFile.bufferedWriter().use { writer ->
-                writer.write("ffconcat version 1.0\n")
-                for (i in frameDelays.indices) {
-                    val frameName = "%06d.jpg".format(i)
-                    writer.write("file '$folder/$frameName'\n")
-                    writer.write("duration ${frameDelays[i] / 1000.0}\n")
-                }
-            }
+            println("Converting ${frameDelays.size} frames to MP4...")
+            val ok = UgoiraEncoder.encode(folder, frameDelays, mp4File)
 
-            val ffmpegPath = findFfmpeg()
-            if (ffmpegPath == null) {
-                System.err.println("ffmpeg not found — keeping ZIP + frames in $folder")
-                return
-            }
-
-            println("Converting to MP4 (${frameDelays.size} frames)...")
-            val ffmpegProc = Runtime.getRuntime().exec(arrayOf(
-                ffmpegPath, "-y", "-f", "concat", "-safe", "0",
-                "-i", "$folder/concat.txt",
-                "-c:v", "libx264", "-pix_fmt", "yuv420p",
-                "-vf", "fps=60,setpts=PTS-STARTPTS",
-                mp4File
-            ))
-            ffmpegProc.waitFor()
-
-            if (ffmpegProc.exitValue() == 0) {
+            if (ok) {
                 File(zipFile).delete()
                 File(folder).deleteRecursively()
                 println("Ugoira done: $mp4File")
             } else {
-                System.err.println("ffmpeg failed — keeping ZIP + frames in $folder")
+                System.err.println("Ugoira encoding failed — keeping ZIP + frames in $folder")
             }
         } catch (e: Exception) {
-            System.err.println("Ugoira processing failed (unzip/ffmpeg not on device): ${e.message}")
+            System.err.println("Ugoira processing failed: ${e.message}")
         }
-    }
-
-    private fun findFfmpeg(): String? {
-        for (path in listOf(
-            "/data/data/com.termux/files/usr/bin/ffmpeg",
-            "/usr/bin/ffmpeg",
-            "/usr/local/bin/ffmpeg",
-            "ffmpeg"
-        )) {
-            try {
-                val proc = Runtime.getRuntime().exec(arrayOf(path, "-version"))
-                if (proc.waitFor() == 0) return path
-            } catch (_: Exception) {}
-        }
-        return null
     }
 
     fun extractFilenameFromUrl(url: String): String {
